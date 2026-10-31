@@ -1,0 +1,198 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-parchment-light: #f7f1e1;
+    --color-parchment: #ede0c8;
+    --color-parchment-dark: #d5c09e;
+    --color-leather-dark: #2a1b12;
+    --color-leather-border: #442d1e;
+    --color-wood-walnut: #1e140d;
+    --color-wood-panel: #2e1d13;
+    --color-brass-highlight: #ffebb0;
+    --color-brass-main: #d4a34b;
+    --color-brass-shadow: #875c1d;
+    --color-brass-dark: #4e320d;
+    --color-emerald-hp: #22c55e;
+    --color-sapphire-aether: #38bdf8;
+  }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background-color: #120c09;
+    color: #ede0c8;
+  }
+
+  h1, h2, h3, .font-cinzel {
+    font-family: 'Cinzel', serif;
+  }
+}
+
+/* ========================================================
+   SKEUOMORPHIC CLOUD MEADOW UI STYLING & TEXTURES
+   ======================================================== */
+
+/* Textura de Pergaminho Envelhecido com Vinheta */
+.cloud-parchment {
+  background: radial-gradient(circle at 50% 30%, #fbf6ec 0%, #ede1cb 70%, #d8c39e 100%);
+  color: #2e1e12;
+  box-shadow: inset 0 0 16px rgba(109, 74, 38, 0.35), 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1px solid #cbb28b;
+}
+
+/* Painel de Madeira Nobre / Couro Escuro de Zepelim */
+.cloud-wood-panel {
+  background: linear-gradient(180deg, #322115 0%, #20140c 50%, #170d07 100%);
+  border: 2px solid #5a3c26;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 235, 176, 0.2),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.8),
+    0 8px 24px rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+
+/* Rebites de Bronze 3D (Cloud Meadow Style) */
+.cloud-rivet {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, #ffe9a6 0%, #c8953c 60%, #5a3810 100%);
+  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+}
+
+/* Moldura Chanfrada de Latão / Bronze Dourado */
+.cloud-brass-frame {
+  border: 2px solid #d4a34b;
+  box-shadow:
+    inset 0 1px 2px rgba(255, 235, 176, 0.5),
+    inset 0 -1px 2px rgba(78, 50, 13, 0.8),
+    0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* Botões Chanfrados Físicos de Latão e Madeira */
+.cloud-btn-brass {
+  background: linear-gradient(180deg, #e8b95d 0%, #c48b2c 45%, #9e6a17 80%, #7d520e 100%);
+  border-top: 1px solid #fff2c4;
+  border-left: 1px solid #e8b95d;
+  border-right: 1px solid #5a3810;
+  border-bottom: 2px solid #362007;
+  color: #2b1803;
+  text-shadow: 0 1px 0 rgba(255, 243, 196, 0.6);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  transition: all 0.15s ease;
+}
+
+.cloud-btn-brass:hover:not(:disabled) {
+  background: linear-gradient(180deg, #f7cb73 0%, #dca137 45%, #b67d22 80%, #946214 100%);
+  box-shadow: 0 4px 10px rgba(212, 163, 75, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+.cloud-btn-brass:active:not(:disabled) {
+  background: linear-gradient(180deg, #a6711c 0%, #c48b2c 55%, #e8b95d 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  transform: translateY(1px);
+}
+
+/* Botão Secundário de Couro / Madeira Escura */
+.cloud-btn-wood {
+  background: linear-gradient(180deg, #442d1f 0%, #2e1d13 50%, #1e120b 100%);
+  border: 1px solid #734d31;
+  border-bottom: 2px solid #140b06;
+  color: #ede0c8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.cloud-btn-wood:hover:not(:disabled) {
+  background: linear-gradient(180deg, #533726 0%, #3b2518 50%, #28180e 100%);
+  border-color: #a8744b;
+  transform: translateY(-1px);
+}
+
+/* Trilho de Medidor Mecânico (Gauge Track Recess) */
+.cloud-gauge-track {
+  background: linear-gradient(180deg, #0e0906 0%, #1f140e 100%);
+  border: 2px solid #5a3c26;
+  border-radius: 9999px;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255, 235, 176, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Barra de Vida Verde Esmeralda Vibrante com Brilho Superior */
+.cloud-bar-hp {
+  background: linear-gradient(180deg, #86efac 0%, #22c55e 35%, #15803d 75%, #14532d 100%);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+  position: relative;
+}
+.cloud-bar-hp::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  right: 2px;
+  height: 35%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 9999px;
+}
+
+/* Barra de Mana / Éter Azul Safira */
+.cloud-bar-aether {
+  background: linear-gradient(180deg, #bae6fd 0%, #38bdf8 35%, #0284c7 75%, #075985 100%);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+  position: relative;
+}
+.cloud-bar-aether::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  right: 2px;
+  height: 35%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 9999px;
+}
+
+/* Medalhão de Retrato com Borda de Latão e Asas */
+.cloud-portrait-medallion {
+  background: radial-gradient(circle, #2f2015 0%, #150d08 100%);
+  border: 3px solid #d4a34b;
+  box-shadow:
+    inset 0 0 8px rgba(0, 0, 0, 0.8),
+    0 0 0 1px #5a3810,
+    0 4px 10px rgba(0, 0, 0, 0.7);
+}
+
+/* Notches / Marcadores de Segmento do Medidor */
+.cloud-gauge-ticks {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 23px,
+    rgba(0, 0, 0, 0.6) 23px,
+    rgba(0, 0, 0, 0.6) 25px
+  );
+}
+
+@keyframes floatGentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-float-gentle {
+  animation: floatGentle 3s ease-in-out infinite;
+}
+
+@keyframes pulseGlowGold {
+  0%, 100% { box-shadow: 0 0 8px rgba(212, 163, 75, 0.3); }
+  50% { box-shadow: 0 0 18px rgba(212, 163, 75, 0.75); }
+}
+
+.animate-glow-gold {
+  animation: pulseGlowGold 2s infinite;
+}
