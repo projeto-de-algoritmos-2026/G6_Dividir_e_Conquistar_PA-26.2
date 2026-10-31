@@ -99,10 +99,10 @@
           {/if}
 
           <div>
-            <!-- Arte Vetorial do Personagem Anthro Furry do Deck -->
-            <div class="w-full h-28 rounded-xl overflow-hidden border border-[#8c6d44] mb-2 relative bg-[#170f09] flex items-center justify-center group-hover:border-[#ffeaae] transition-colors shadow-inner">
-              <AnthroArt character={meta.artKey} class="w-24 h-24" />
-              <span class="absolute bottom-1 left-1.5 px-1.5 py-0.2 rounded bg-stone-950/80 border border-[#b4925e] text-[#f7e3ba] text-[8px] font-black uppercase tracking-wider">
+            <!-- Retrato Ilustrado do Personagem Anthro Furry do Deck -->
+            <div class="w-full h-36 rounded-2xl overflow-hidden border-2 border-[#8c6d44] mb-2.5 relative bg-[#170f09] group-hover:border-[#ffeaae] transition-colors shadow-inner">
+              <AnthroArt character={meta.artKey} class="w-full h-full" />
+              <span class="absolute bottom-1.5 left-2 px-2 py-0.5 rounded-md bg-stone-950/85 border border-[#b4925e] text-[#f7e3ba] text-[9px] font-black uppercase tracking-wider backdrop-blur-sm z-10">
                 {meta.species}
               </span>
             </div>
