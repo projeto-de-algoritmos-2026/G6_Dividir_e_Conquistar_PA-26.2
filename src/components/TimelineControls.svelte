@@ -13,11 +13,15 @@
     rB: number;
     rCross: number;
     rTotal: number;
+    spellsCount?: number;
+    isInterventionReady?: boolean;
+    currentInterventionWindow?: 'alpha' | 'beta' | null;
     onNextStep: () => void;
     onPrevStep: () => void;
     onTogglePlay: () => void;
     onChangeSpeed: (newSpeed: number) => void;
     onReset: () => void;
+    onOpenIntervention?: () => void;
   }
 
   let {
@@ -30,11 +34,15 @@
     rB,
     rCross,
     rTotal,
+    spellsCount = 0,
+    isInterventionReady = false,
+    currentInterventionWindow = null,
     onNextStep,
     onPrevStep,
     onTogglePlay,
     onChangeSpeed,
-    onReset
+    onReset,
+    onOpenIntervention
   }: Props = $props();
 
   let audioEnabled = $state(soundscape.enabled);
@@ -95,15 +103,44 @@
       </div>
     {/if}
 
-    <!-- Botão de Som Mute / Unmute -->
-    <button
-      onclick={handleAudioToggle}
-      class="cm-btn-dark px-3 py-1.5 text-xs"
-      title="Ativar/Desativar Efeitos Sonoros"
-    >
-      <PixelIcon name={audioEnabled ? 'sound' : 'mute'} size={14} />
-      <span>{audioEnabled ? 'Som Ativo' : 'Mudo'}</span>
-    </button>
+    <!-- Fórmulas Alquímicas & Som -->
+    <div class="flex items-center gap-2">
+      {#if onOpenIntervention}
+        <button
+          type="button"
+          onclick={onOpenIntervention}
+          disabled={spellsCount === 0}
+          class="transition-all px-3 py-1.5 text-xs font-bold rounded-[3px] flex items-center gap-1.5
+            {isInterventionReady
+              ? 'cm-btn cm-gold-ring cm-anim-bob !bg-cm-gold !text-cm-ink'
+              : 'cm-btn-dark opacity-90 hover:opacity-100'}"
+          title={isInterventionReady
+            ? 'Janela de Intervenção pronta! Clique para conjurar fórmula.'
+            : spellsCount > 0
+              ? `${spellsCount} fórmulas alquímicas disponíveis nas janelas Alpha e Beta.`
+              : 'Nenhuma fórmula restante.'}
+        >
+          <PixelIcon name="flask" size={13} />
+          <span>Fórmulas ({spellsCount})</span>
+          {#if isInterventionReady}
+            <span class="px-1.5 py-0.2 rounded-[2px] bg-cm-royal text-white text-[10px] uppercase font-bold animate-pulse">
+              Pronto!
+            </span>
+          {/if}
+        </button>
+      {/if}
+
+      <!-- Botão de Som Mute / Unmute -->
+      <button
+        type="button"
+        onclick={handleAudioToggle}
+        class="cm-btn-dark px-3 py-1.5 text-xs"
+        title="Ativar/Desativar Efeitos Sonoros"
+      >
+        <PixelIcon name={audioEnabled ? 'sound' : 'mute'} size={14} />
+        <span>{audioEnabled ? 'Som' : 'Mudo'}</span>
+      </button>
+    </div>
   </div>
 
   <!-- CONSOLE MECÂNICO DE CONTROLE (BARRA DE TRAY ref 01 e BOTÕES TÁTEIS) -->
@@ -126,6 +163,7 @@
     <div class="flex items-center gap-2">
       <!-- Início -->
       <button
+        type="button"
         onclick={onReset}
         class="cm-btn-dark px-2.5 py-1.5 text-xs"
         title="Voltar ao início"
@@ -135,6 +173,7 @@
 
       <!-- Voltar -->
       <button
+        type="button"
         onclick={onPrevStep}
         disabled={stepIndex <= 0 || isPlaying}
         class="cm-btn-dark px-3 py-1.5 text-xs"
@@ -144,6 +183,7 @@
 
       <!-- Play / Pause Dourado Ativo -->
       <button
+        type="button"
         onclick={onTogglePlay}
         class="cm-btn px-4 py-1.5 text-xs"
       >
@@ -153,6 +193,7 @@
 
       <!-- Avançar -->
       <button
+        type="button"
         onclick={onNextStep}
         disabled={stepIndex >= totalSteps - 1 || isPlaying}
         class="cm-btn-dark px-3 py-1.5 text-xs"
@@ -166,6 +207,7 @@
     <div class="flex items-center gap-1 bg-[#1b1b1e] p-1 rounded-[3px] border-2 border-cm-frame">
       {#each [1, 2, 4] as s}
         <button
+          type="button"
           onclick={() => onChangeSpeed(s)}
           class="px-2.5 py-0.5 rounded-[2px] text-xs font-bold transition-all
             {speed === s

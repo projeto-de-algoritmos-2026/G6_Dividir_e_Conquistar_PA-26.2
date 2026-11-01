@@ -82,6 +82,18 @@ export interface AlgorithmStep {
   };
 }
 
+export interface AlgorithmResumeOptions {
+  startFrom: 'divide' | 'alpha' | 'beta';
+  initialRA?: number;
+  initialRB?: number;
+  initialRCross?: number;
+  initialDamageP1?: number;
+  initialDamageP2?: number;
+  initialHealP1?: number;
+  initialHealP2?: number;
+  initialStepCounter?: number;
+}
+
 export interface PlayerState {
   id: 'player1' | 'player2';
   name: string;

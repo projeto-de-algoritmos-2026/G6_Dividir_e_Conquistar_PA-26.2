@@ -12,20 +12,19 @@
 
 {#if isOpen}
   <div class="cm-overlay select-none cm-anim-pop">
-    <div class="cm-window max-w-3xl w-full max-h-[90vh] p-2 flex flex-col">
+    <div class="cm-window max-w-2xl w-full p-2 max-h-[90vh] flex flex-col">
       <div class="cm-window-body overflow-hidden flex flex-col flex-1">
-        <!-- Banner Celestial com Runas de Cloud Meadow (ref 06) -->
+        <!-- Banner Azul Real com Runas (ref 06) -->
         <RoyalBanner
-          runes="manual tatico"
-          title="Manual do Motor Algorítmico & Táticas"
-          subtitle="A ciência do algoritmo Divide-and-Conquer: Counting Inversions em O(n log n)"
-          {onClose}
+          runes="manual"
+          title="Manual do Estrategista Celeste"
+          subtitle="Fundamentos Algorítmicos • Dividir e Conquistar"
         />
 
-        <!-- Conteúdo do Pergaminho Rolável -->
-        <div class="cm-parch p-4 sm:p-6 overflow-y-auto flex flex-col gap-5 text-cm-ink">
-          <!-- Seção 1: O Que é a Contagem de Inversões? -->
-          <div class="flex flex-col gap-1.5">
+        <!-- Conteúdo Rolável em Pergaminho Envelhecido (ref 02 & 03) -->
+        <div class="cm-parch p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-5 text-cm-ink">
+          <!-- Seção 1: O Motor Dividir-e-Conquistar -->
+          <div class="flex flex-col gap-2">
             <h3 class="text-xs sm:text-sm font-bold text-cm-royal uppercase tracking-wide flex items-center gap-1.5 border-b-2 border-cm-tan pb-1">
               <PixelIcon name="scroll" size={14} />
               1. O Motor Dividir-e-Conquistar O(n log n)
@@ -118,6 +117,17 @@
                   Mutam seus próprios valores numéricos ao sofrerem inversões ou ao reagirem com fórmulas alquímicas nas janelas Alpha e Beta.
                 </p>
               </div>
+            </div>
+          </div>
+
+          <!-- Seção 4: Fórmulas Alquímicas e Janelas de Intervenção -->
+          <div class="flex flex-col gap-2">
+            <h3 class="text-xs sm:text-sm font-bold text-cm-royal uppercase tracking-wide flex items-center gap-1.5 border-b-2 border-cm-tan pb-1">
+              <PixelIcon name="flask" size={14} />
+              4. Fórmulas Alquímicas e Poções Táticas
+            </h3>
+            <div class="cm-bubble tail-left p-3 text-xs leading-relaxed text-cm-ink">
+              Cada comandante recebe <strong>2 fórmulas alquímicas</strong> em sua bolsa. Durante a resolução, o algoritmo pausa nas <strong>Janelas de Intervenção Alpha</strong> (após nichos T(2)) e <strong>Beta</strong> (após fusão das alas). Você pode usá-las para alterar o peso de uma criatura ou permutar unidades vizinhas, manipulando as inversões antes dos merges finais!
             </div>
           </div>
 

@@ -29,7 +29,7 @@
   import RoyalBanner from './ui/RoyalBanner.svelte';
   import Pennant from './ui/Pennant.svelte';
 
-  // --- ESTADO REATIVO COM RUNES (SVELTE 5) ---
+  // --- ESTADO REATIVO COM RUNES (SVELTE 5) ---\
   let phase = $state<Phase>('lobby');
   let gameMode = $state<'solo' | 'p2p'>('solo');
   let userPlayerId = $state<'player1' | 'player2'>('player1');
@@ -299,7 +299,7 @@
 
     const nextStep = steps[currentStepIndex + 1];
 
-    if (nextStep.type === 'alpha_pause' && !player1.hasPlayedAlphaSpell) {
+    if (nextStep.type === 'alpha_pause' && !player1.hasPlayedAlphaSpell && player1.spells.length > 0) {
       pauseAutoPlay();
       currentStepIndex++;
       currentInterventionWindow = 'alpha';
@@ -307,7 +307,7 @@
       return;
     }
 
-    if (nextStep.type === 'beta_pause' && !player1.hasPlayedBetaSpell) {
+    if (nextStep.type === 'beta_pause' && !player1.hasPlayedBetaSpell && player1.spells.length > 0) {
       pauseAutoPlay();
       currentStepIndex++;
       currentInterventionWindow = 'beta';
@@ -318,21 +318,45 @@
     currentStepIndex++;
   }
 
+  function handleOpenInterventionManually() {
+    pauseAutoPlay();
+    const userSpells = userPlayerId === 'player1' ? player1.spells : player2.spells;
+    if (userSpells.length === 0) return;
+
+    if (currentStep?.type === 'beta_pause' || currentStepIndex >= 18) {
+      currentInterventionWindow = 'beta';
+      phase = 'beta_window';
+    } else {
+      currentInterventionWindow = 'alpha';
+      phase = 'alpha_window';
+    }
+  }
+
   // --- JANELAS DE INTERVENÇÃO DE MAGIAS ---
   function handleCastSpell(spellId: string, targetSlot: number) {
-    const spell = player1.spells.find(s => s.id === spellId);
+    const isP1 = userPlayerId === 'player1';
+    const activePlayer = isP1 ? player1 : player2;
+    const spell = activePlayer.spells.find(s => s.id === spellId);
     if (!spell) return;
 
     soundscape.playSpellCast();
-    player1.spells = player1.spells.filter(s => s.id !== spellId);
-
-    if (currentInterventionWindow === 'alpha') {
-      player1.hasPlayedAlphaSpell = true;
+    if (isP1) {
+      player1.spells = player1.spells.filter(s => s.id !== spellId);
+      if (currentInterventionWindow === 'alpha') {
+        player1.hasPlayedAlphaSpell = true;
+      } else {
+        player1.hasPlayedBetaSpell = true;
+      }
     } else {
-      player1.hasPlayedBetaSpell = true;
+      player2.spells = player2.spells.filter(s => s.id !== spellId);
+      if (currentInterventionWindow === 'alpha') {
+        player2.hasPlayedAlphaSpell = true;
+      } else {
+        player2.hasPlayedBetaSpell = true;
+      }
     }
 
-    const currentBoard = cloneCards(currentStep.boardState);
+    const currentBoard = cloneCards(currentStep?.boardState || slots);
     if (spell.spellTarget === 'weight_buff' && currentBoard[targetSlot]) {
       currentBoard[targetSlot]!.weight += spell.passiveValue;
     } else if (spell.spellTarget === 'weight_nerf' && currentBoard[targetSlot]) {
@@ -344,12 +368,14 @@
       currentBoard[neighbor] = tmp;
     }
 
+    const logEntries = [`[Fórmula Alquímica] Você conjurou ${spell.name} na Ilha #${targetSlot}!`];
+
     if (gameMode === 'solo' && player2.spells.length > 0) {
       const botDecision = calculateSpellDecision(
         player2.spells,
         currentBoard,
         player2.deckArchetype,
-        currentInterventionWindow!
+        currentInterventionWindow || 'alpha'
       );
       if (botDecision && botDecision.shouldCast && botDecision.spellId && botDecision.targetSlot !== undefined && botDecision.targetSlot !== -1) {
         const spellToCast = player2.spells.find(s => s.id === botDecision.spellId);
@@ -366,24 +392,55 @@
             currentBoard[bTarget] = currentBoard[neighbor];
             currentBoard[neighbor] = tmp;
           }
+          logEntries.push(`[Fórmula Rival] Autômato conjurou ${spellToCast.name} na Ilha #${bTarget}!`);
         }
       }
     }
 
-    const remainingSim = generateAlgorithmSteps(currentBoard);
-    const remainingSteps = remainingSim.steps;
+    logs = [...logs, ...logEntries];
+
+    const winType = currentInterventionWindow || 'alpha';
+    const remainingSim = generateAlgorithmSteps(currentBoard, {
+      startFrom: winType,
+      initialRA: currentStep?.rA ?? 0,
+      initialRB: currentStep?.rB ?? 0,
+      initialRCross: currentStep?.rCross ?? 0,
+      initialDamageP1: lastSimulation?.totalDamageP1 ?? 0,
+      initialDamageP2: lastSimulation?.totalDamageP2 ?? 0,
+      initialStepCounter: (currentStep?.id ?? currentStepIndex) + 1
+    });
+
     lastSimulation = remainingSim;
-    const spliceIndex = remainingSteps.findIndex(s => s.type === currentStep.type);
-    if (spliceIndex !== -1) {
-      steps = [...steps.slice(0, currentStepIndex + 1), ...remainingSteps.slice(spliceIndex + 1)];
-    }
+
+    const interventionStep: AlgorithmStep = {
+      id: currentStep?.id ?? currentStepIndex,
+      type: winType === 'alpha' ? 'alpha_pause' : 'beta_pause',
+      title: `[Alquimia] ${spell.name} Conjurada!`,
+      description: `${spell.name} aplicado na Ilha #${targetSlot}. Pesos recalculados para as próximas fusões.`,
+      complexityNotation: winType === 'alpha' ? 'Intervenção T(2)' : 'Intervenção T(4)',
+      rA: currentStep?.rA ?? 0,
+      rB: currentStep?.rB ?? 0,
+      rCross: currentStep?.rCross ?? 0,
+      rTotal: (currentStep?.rA ?? 0) + (currentStep?.rB ?? 0) + (currentStep?.rCross ?? 0),
+      boardState: cloneCards(currentBoard),
+      eventPayload: {
+        logText: logEntries.join(' ')
+      }
+    };
+
+    steps = [...steps.slice(0, currentStepIndex), interventionStep, ...remainingSim.steps];
 
     currentInterventionWindow = null;
     phase = 'executing';
-    startAutoPlay();
+    pauseAutoPlay();
   }
 
   function handlePassIntervention() {
+    if (currentInterventionWindow === 'alpha') {
+      player1.hasPlayedAlphaSpell = true;
+    } else {
+      player1.hasPlayedBetaSpell = true;
+    }
     currentInterventionWindow = null;
     phase = 'executing';
     startAutoPlay();
@@ -427,6 +484,14 @@
 
     player1.hand = p1New.creatures;
     player2.hand = p2New.creatures;
+
+    if (player1.spells.length === 0) {
+      player1.spells = p1New.spells;
+    }
+    if (player2.spells.length === 0) {
+      player2.spells = p2New.spells;
+    }
+
     player1.hasPlayedAlphaSpell = false;
     player1.hasPlayedBetaSpell = false;
     player2.hasPlayedAlphaSpell = false;
@@ -559,52 +624,35 @@
             </div>
             <div class="w-24 sm:w-36 cm-hud-bar rounded-full">
               <div
-                class="cm-bar-fill is-hp transition-all duration-300"
+                class="cm-hud-bar-fill transition-all duration-300"
                 style="width: {(player1.hp / 30) * 100}%"
               ></div>
             </div>
           </div>
         </div>
 
-        <!-- Centro: Bandeja de Botões Rápidos de Inventário com Rebites (ref 01) -->
-        <div class="cm-tray px-3 py-1 hidden sm:flex items-center gap-2 text-white">
-          <div class="cm-rivet"></div>
-          <button
-            onclick={() => isTutorialOpen = true}
-            class="cm-tray-btn"
-            title="Grimório / Manual"
-          >
-            <PixelIcon name="scroll" size={17} />
-          </button>
-          <div class="cm-tray-btn" title="Inventário / Mão">
-            <PixelIcon name="bag" size={17} />
-          </div>
-          <div class="cm-tray-btn" title="Calendário de Batalha">
-            <PixelIcon name="calendar" size={17} />
-          </div>
-          <div class="px-2 py-0.5 rounded-[3px] bg-[#202422] border border-white/20 text-xs font-bold text-cm-gold font-mono">
-            R{roundNumber}
-          </div>
-          <div class="cm-rivet"></div>
+        <!-- Indicador Central da Rodada & Arquétipo Ativo -->
+        <div class="hidden sm:flex flex-col items-center">
+          <span class="text-[10px] text-cm-tan uppercase tracking-widest font-bold">Rodada</span>
+          <span class="text-base font-bold text-cm-cream font-mono">#{roundNumber}</span>
         </div>
 
-        <!-- Jogador 2 (Oponente): Medalhão HP + Barra do Oponente -->
+        <!-- Jogador 2 (Rival / Autômato): Barra com Medidor Dourado & Medalhão Circular -->
         <div class="flex items-center gap-2 flex-row-reverse text-right">
-          <!-- Medalhão HP do Oponente -->
-          <div class="cm-coin w-8 h-8 text-[12px] shadow-md flex items-center justify-center font-bold !bg-[#e2482f] !text-white">
+          <div class="cm-coin w-8 h-8 text-[12px] shadow-md flex items-center justify-center font-bold !bg-[#b8492f]">
             HP
           </div>
 
           <div class="flex flex-col gap-0.5 items-end">
             <div class="flex items-center gap-1.5 text-xs font-bold leading-none">
-              <span class="text-[11px] px-1.5 py-0.2 rounded-[2px] bg-[#1a1b1f] text-[#86efac] font-mono">
+              <span class="text-[11px] px-1.5 py-0.2 rounded-[2px] bg-[#1a1b1f] text-[#fca5a5] font-mono">
                 {player2.hp}/30
               </span>
               <span class="text-white drop-shadow-[1px_1px_0_#1e1d21]">{player2.name}</span>
             </div>
             <div class="w-24 sm:w-36 cm-hud-bar rounded-full">
               <div
-                class="cm-bar-fill is-hp transition-all duration-300"
+                class="cm-hud-bar-fill transition-all duration-300 !bg-[#d95738] !shadow-[inset_0_2px_0_#f87171]"
                 style="width: {(player2.hp / 30) * 100}%"
               ></div>
             </div>
@@ -612,20 +660,20 @@
         </div>
       </div>
 
-      <!-- Relógio Circular com Tag Suspensa por Corrente (Screenshot 01) -->
-      <div class="relative pl-1 shrink-0">
-        <SkyClock tag="{roundNumber}ª" />
-      </div>
+      <!-- Relógio Celestial Suspenso por Corrente de Metal (ref 01) -->
+      <SkyClock roundNumber={roundNumber} totalRounds={3} />
     </header>
   {/if}
 
-  <!-- CORPO PRINCIPAL DEPENDENDO DA FASE -->
-  <main class="relative z-10 flex-1 flex flex-col items-center justify-center p-2 sm:p-3">
+  <!-- ÁREA CENTRAL DE JOGO / NAVEGAÇÃO DE TELAS -->
+  <main class="relative z-20 flex-1 flex flex-col justify-center px-2 sm:px-4 py-2">
     {#if phase === 'lobby'}
       <Lobby
-        selectedArchetype={player1Archetype}
-        onSelectArchetype={(arch) => player1Archetype = arch}
-        onStartSolo={(botArch) => startMatch('solo', player1Archetype, botArch)}
+        p1Arch={player1Archetype}
+        p2Arch={player2Archetype}
+        onSelectP1Arch={(a) => player1Archetype = a}
+        onSelectP2Arch={(a) => player2Archetype = a}
+        onStartSolo={() => startMatch('solo', player1Archetype, player2Archetype)}
         onHostRoom={handleHostRoom}
         onJoinRoom={handleJoinRoom}
         onOpenTutorial={() => isTutorialOpen = true}
@@ -637,6 +685,7 @@
       <SeedingPhase
         {slots}
         playerHand={userPlayerId === 'player1' ? player1.hand : player2.hand}
+        playerSpells={userPlayerId === 'player1' ? player1.spells : player2.spells}
         opponentHandCount={userPlayerId === 'player1' ? player2.hand.length : player1.hand.length}
         {currentTurn}
         {userPlayerId}
@@ -661,11 +710,15 @@
           {rB}
           {rCross}
           {rTotal}
+          spellsCount={userPlayerId === 'player1' ? player1.spells.length : player2.spells.length}
+          isInterventionReady={currentStep?.type === 'alpha_pause' || currentStep?.type === 'beta_pause'}
+          currentInterventionWindow={currentInterventionWindow}
           onNextStep={stepForward}
           onPrevStep={stepBackward}
           onTogglePlay={togglePlayPause}
           onChangeSpeed={changeSpeed}
           onReset={resetToStart}
+          onOpenIntervention={handleOpenInterventionManually}
         />
       </div>
     {/if}
@@ -759,7 +812,7 @@
                 <p class="text-xs sm:text-sm text-cm-ink-soft max-w-sm leading-relaxed">
                   {winner === userPlayerId
                     ? 'Seus guardiões dominaram as correntes térmicas e conquistaram os céus com maestria algorítmica!'
-                    : 'O adversário manipulou as inversões e sobrepujou suas defesas nas alas.'}
+                    : 'O adversário manipulou as inversões e sobrepujou suas defesas nas alas.'}\
                 </p>
               </div>
 

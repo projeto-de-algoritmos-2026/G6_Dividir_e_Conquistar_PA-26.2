@@ -7,6 +7,7 @@
   interface Props {
     slots: (Card | null)[];
     playerHand: Card[];
+    playerSpells?: Card[];
     opponentHandCount: number;
     currentTurn: 'player1' | 'player2';
     userPlayerId: 'player1' | 'player2';
@@ -18,6 +19,7 @@
   let {
     slots,
     playerHand,
+    playerSpells = [],
     opponentHandCount,
     currentTurn,
     userPlayerId,
@@ -153,4 +155,44 @@
       </div>
     </div>
   </section>
+
+  <!-- Bolsa de Fórmulas & Poções Alquímicas (ref 03 & 04) -->
+  {#if playerSpells.length > 0}
+    <section class="relative mt-2">
+      <div class="absolute -top-3.5 left-4 sm:left-6 z-20 flex items-center gap-1.5">
+        <span class="cm-tag !bg-cm-royal text-white px-3 py-1 text-xs flex items-center gap-1.5 shadow">
+          <PixelIcon name="flask" size={13} /> Bolsa de Fórmulas Alquímicas & Poções ({playerSpells.length}/2)
+        </span>
+      </div>
+      <div class="cm-window is-dark-frame pt-5 pb-3 px-3 sm:px-4">
+        <div class="flex flex-col gap-2">
+          <p class="text-[12px] text-cm-cream/80 leading-tight">
+            ✨ <strong>Prontidão Alquímica:</strong> Estas fórmulas permanecem preparadas em sua bolsa. Você poderá conjurá-las durante as <strong>Janelas de Intervenção Tática</strong> (Janela Alpha após a ordenação dos nichos e Janela Beta após a fusão das alas) para manipular pesos e contornar inversões.
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-1">
+            {#each playerSpells as spell}
+              <div class="p-2.5 rounded-[4px] bg-[#1e2025] border-2 border-cm-frame flex flex-col gap-1 text-left shadow-sm">
+                <div class="flex items-center justify-between border-b border-cm-frame pb-1">
+                  <span class="font-bold text-xs sm:text-sm text-cm-cream flex items-center gap-1.5">
+                    <PixelIcon name="flask" size={12} />
+                    {spell.name}
+                  </span>
+                  <span class="cm-tag !bg-cm-gold text-cm-ink font-bold text-[11px] px-2 py-0.5">
+                    {spell.spellTarget === 'adjacent_swap'
+                      ? 'Permutação'
+                      : spell.passiveValue > 0
+                        ? `+${spell.passiveValue} Peso`
+                        : `${spell.passiveValue} Peso`}
+                  </span>
+                </div>
+                <p class="text-[11px] text-cm-tan leading-tight">
+                  {spell.passiveDescription}
+                </p>
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+    </section>
+  {/if}
 </div>
