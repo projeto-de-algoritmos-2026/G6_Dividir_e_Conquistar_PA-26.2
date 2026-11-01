@@ -10,7 +10,7 @@
     NetworkMessage
   } from '../lib/types';
   import { buildDeckHand, ARCHETYPES } from '../lib/engine/cards';
-  import { generateAlgorithmSteps, cloneCards } from '../lib/engine/inversions';
+  import { generateAlgorithmSteps, cloneCards, type StepSimulationResult } from '../lib/engine/inversions';
   import { calculateBestMove, calculateSpellDecision } from '../lib/engine/bot';
   import { networkManager } from '../lib/network/peer';
   import { soundscape } from '../lib/audio/soundscape';
@@ -70,6 +70,7 @@
 
   // Execução do Algoritmo
   let steps = $state<AlgorithmStep[]>([]);
+  let lastSimulation = $state<StepSimulationResult | null>(null);
   let currentStepIndex = $state<number>(0);
   let isPlaying = $state<boolean>(false);
   let playbackSpeed = $state<number>(1);
@@ -232,7 +233,9 @@
     currentStepIndex = 0;
 
     const initialBoard = cloneCards(slots);
-    steps = generateAlgorithmSteps(initialBoard, player1.hp, player2.hp);
+    const sim = generateAlgorithmSteps(initialBoard);
+    steps = sim.steps;
+    lastSimulation = sim;
     logs = [...logs, `Tabuleiro completo. O arquipélago divide-se em nichos.`];
 
     startAutoPlay();
@@ -367,7 +370,9 @@
       }
     }
 
-    const remainingSteps = generateAlgorithmSteps(currentBoard, player1.hp, player2.hp);
+    const remainingSim = generateAlgorithmSteps(currentBoard);
+    const remainingSteps = remainingSim.steps;
+    lastSimulation = remainingSim;
     const spliceIndex = remainingSteps.findIndex(s => s.type === currentStep.type);
     if (spliceIndex !== -1) {
       steps = [...steps.slice(0, currentStepIndex + 1), ...remainingSteps.slice(spliceIndex + 1)];
@@ -387,13 +392,11 @@
   // --- RESOLUÇÃO DA RODADA ---
   function handleResolution() {
     const finalStep = steps[steps.length - 1];
-    if (finalStep.eventPayload) {
-      const p1Damage = (finalStep.eventPayload as any).p1Damage || 0;
-      const p2Damage = (finalStep.eventPayload as any).p2Damage || 0;
+    const p1Damage = finalStep?.eventPayload?.finalDamageP1 ?? lastSimulation?.totalDamageP1 ?? 0;
+    const p2Damage = finalStep?.eventPayload?.finalDamageP2 ?? lastSimulation?.totalDamageP2 ?? 0;
 
-      player1.hp = Math.max(0, player1.hp - p1Damage);
-      player2.hp = Math.max(0, player2.hp - p2Damage);
-    }
+    player1.hp = Math.max(0, player1.hp - p1Damage);
+    player2.hp = Math.max(0, player2.hp - p2Damage);
 
     if (player1.hp <= 0 || player2.hp <= 0) {
       phase = 'match_end';

@@ -459,6 +459,8 @@ export function generateAlgorithmSteps(initialSlots: (Card | null)[]): StepSimul
     `r_total = ${rA} + ${rB} + ${rCross} = ${rTotal}`,
     undefined,
     {
+      finalDamageP1: totalDamageP1,
+      finalDamageP2: totalDamageP2,
       logText: `Fim da resolução. Inversões: r_A=${rA}, r_B=${rB}, r=${rCross} (Total: ${rTotal}). Saldo de Dano: P1 sofre ${totalDamageP1}, P2 sofre ${totalDamageP2}.`
     }
   );

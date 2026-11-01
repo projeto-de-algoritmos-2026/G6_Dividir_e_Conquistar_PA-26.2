@@ -73,6 +73,12 @@ export interface AlgorithmStep {
     swappedIndices?: [number, number];
     kInversions?: number;
     logText: string;
+    damageP1?: number;
+    damageP2?: number;
+    healP1?: number;
+    healP2?: number;
+    finalDamageP1?: number;
+    finalDamageP2?: number;
   };
 }
 
