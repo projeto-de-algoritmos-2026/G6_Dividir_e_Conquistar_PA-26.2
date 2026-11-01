@@ -7,15 +7,15 @@ export type PassiveTrigger = 'ultrapassagem' | 'pedagio' | 'fluxo_sereno' | 'mut
 export interface Card {
   id: string;
   name: string;
-  speciesName?: string; // Espécie Anthro Furry (ex: 'Lupine Warrior', 'Holstaur Brawler', 'Catgirl Mystic')
+  speciesName?: string; // Espécie / título da criatura (ex: 'Guerreiro Lupino', 'Baluarte Ursídeo')
   weight: number; // Prioridade numérica a_i
   originalWeight: number;
   archetype: Archetype;
   type: CardType;
   owner: 'player1' | 'player2'; // 'player1' is Host / User, 'player2' is Guest / Bot
   flavor: string;
-  illustration: string; // SVG icon key or visual motif
-  image?: string; // Caminho para a pintura do monstro anthro furry
+  illustration: string; // Identificador visual do personagem
+  image?: string;
   passiveType?: PassiveTrigger;
   passiveValue: number; // Valor numérico do efeito (dano, cura, bônus)
   passiveDescription: string;
@@ -60,21 +60,18 @@ export interface AlgorithmStep {
   rB: number;
   rCross: number;
   rTotal: number;
+  // Estado completo do array no momento
   boardState: (Card | null)[];
+  // Pointers ativos para visualização
   activePointers?: {
-    auroraIndex?: number;
-    ocasoIndex?: number;
+    auroraIndex?: number; // Ala A (i)
+    ocasoIndex?: number; // Ala B (j)
     activePair?: [number, number];
   };
+  // Destaque de animação
   eventPayload?: {
-    aggressor?: Card;
-    victims?: Card[];
     swappedIndices?: [number, number];
     kInversions?: number;
-    damageP1?: number;
-    damageP2?: number;
-    healP1?: number;
-    healP2?: number;
     logText: string;
   };
 }
@@ -90,31 +87,13 @@ export interface PlayerState {
   hasPlayedBetaSpell: boolean;
 }
 
-export interface GameState {
-  phase: Phase;
-  round: number;
-  turnPlayer: 'player1' | 'player2';
-  slots: (Card | null)[]; // 8 slots no tabuleiro
-  player1: PlayerState;
-  player2: PlayerState;
-  currentStepIndex: number;
-  steps: AlgorithmStep[];
-  isPlaying: boolean;
-  playbackSpeed: number; // 1, 2, 4
-  winner: 'player1' | 'player2' | 'draw' | null;
-  rA: number;
-  rB: number;
-  rCross: number;
-  rTotal: number;
-  logHistory: string[];
+export interface NetworkMessage {
+  type: 'join' | 'deck_select' | 'place_card' | 'cast_spell' | 'pass_window' | 'sync_state' | 'restart';
+  player: 'player1' | 'player2';
+  archetype?: Archetype;
+  cardId?: string;
+  slotIndex?: number;
+  targetSlot?: number;
+  windowType?: 'alpha' | 'beta';
+  boardSnapshot?: (Card | null)[];
 }
-
-export type NetworkMessage =
-  | { type: 'HELLO'; playerName: string; deck: Archetype }
-  | { type: 'START_GAME'; starter: 'player1' | 'player2' }
-  | { type: 'PLACE_CARD'; cardId: string; slotIndex: number; player: 'player1' | 'player2' }
-  | { type: 'CAST_SPELL'; spellId: string; targetSlot: number; window: 'alpha' | 'beta'; player: 'player1' | 'player2' }
-  | { type: 'PASS_WINDOW'; window: 'alpha' | 'beta'; player: 'player1' | 'player2' }
-  | { type: 'SYNC_STEP'; stepIndex: number }
-  | { type: 'PLAY_PAUSE'; isPlaying: boolean; speed: number }
-  | { type: 'RESTART_ROUND' };

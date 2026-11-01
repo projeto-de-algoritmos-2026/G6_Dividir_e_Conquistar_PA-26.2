@@ -4,20 +4,20 @@ import GameIsland from '../components/GameIsland.svelte';
 ---
 
 <!doctype html>
-<html lang="pt-BR" class="h-full bg-[#120f0d]">
+<html lang="pt-BR" class="min-h-full">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="description" content="DIVIDE ET IMPERA: Skyward Inversions - Jogo web de cartas 1v1 estratégico impulsionado pelo algoritmo Divide-and-Conquer: Counting Inversions em O(n log n)." />
-    <meta name="theme-color" content="#120f0d" />
+    <meta name="description" content="DIVIDE ET IMPERA: Skyward Inversions - Jogo tático de cartas 1v1 ambientado no universo de Cloud Meadow, impulsionado pelo algoritmo Divide-and-Conquer: Counting Inversions em O(n log n)." />
+    <meta name="theme-color" content="#4f8fcf" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>DIVIDE ET IMPERA: Skyward Inversions | STRATADIVIDE</title>
-    <!-- Fontes do Google: Cinzel para títulos nobres e Outfit para UI clara -->
+    <title>DIVIDE ET IMPERA: Skyward Inversions | Cloud Meadow Tactical</title>
+    <!-- Fontes do Google: Pixelify Sans e VT323 para a autêntica UI Pixel-Art de Cloud Meadow -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=VT323&display=swap" rel="stylesheet" />
   </head>
-  <body class="h-full text-stone-100 antialiased selection:bg-amber-500 selection:text-stone-950">
+  <body class="min-h-screen text-cm-ink antialiased selection:bg-cm-gold selection:text-cm-frame">
     <GameIsland client:only="svelte" />
   </body>
 </html>

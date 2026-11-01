@@ -15,13 +15,19 @@
   import { networkManager } from '../lib/network/peer';
   import { soundscape } from '../lib/audio/soundscape';
 
-  import AnthroArt from './AnthroArt.svelte';
+  import CharacterArt from './CharacterArt.svelte';
   import Lobby from './Lobby.svelte';
   import SeedingPhase from './SeedingPhase.svelte';
   import AlgorithmicBoard from './AlgorithmicBoard.svelte';
   import TimelineControls from './TimelineControls.svelte';
   import InterventionModal from './InterventionModal.svelte';
   import TutorialModal from './TutorialModal.svelte';
+
+  import SkyBackdrop from './ui/SkyBackdrop.svelte';
+  import SkyClock from './ui/SkyClock.svelte';
+  import PixelIcon from './ui/PixelIcon.svelte';
+  import RoyalBanner from './ui/RoyalBanner.svelte';
+  import Pennant from './ui/Pennant.svelte';
 
   // --- ESTADO REATIVO COM RUNES (SVELTE 5) ---
   let phase = $state<Phase>('lobby');
@@ -124,7 +130,7 @@
 
     player1 = {
       id: 'player1',
-      name: mode === 'solo' ? 'Comandante Anthro' : 'Jogador 1',
+      name: mode === 'solo' ? 'Comandante' : 'Jogador 1',
       hp: 30,
       deckArchetype: p1Arch,
       hand: p1Deck.creatures,
@@ -135,7 +141,7 @@
 
     player2 = {
       id: 'player2',
-      name: mode === 'solo' ? 'Guardião Anthro Rival' : 'Jogador 2',
+      name: mode === 'solo' ? 'Autômato Rival' : 'Jogador 2',
       hp: 30,
       deckArchetype: p2Arch,
       hand: p2Deck.creatures,
@@ -158,18 +164,18 @@
   }
 
   function handlePlaceCard(slotIndex: number) {
-    if (slots[slotIndex] !== null || !selectedCardId) return;
+    if (!selectedCardId || slots[slotIndex] !== null) return;
+    if (currentTurn !== userPlayerId) return;
 
-    const currentHand = currentTurn === 'player1' ? player1.hand : player2.hand;
-    const cardIdx = currentHand.findIndex(c => c.id === selectedCardId);
-    if (cardIdx === -1) return;
-
-    const card = { ...currentHand[cardIdx], owner: currentTurn };
+    const currentHand = userPlayerId === 'player1' ? player1.hand : player2.hand;
+    const card = currentHand.find(c => c.id === selectedCardId);
+    if (!card) return;
 
     slots[slotIndex] = card;
+    slots = [...slots];
     soundscape.playCardPlace();
 
-    if (currentTurn === 'player1') {
+    if (userPlayerId === 'player1') {
       player1.hand = player1.hand.filter(c => c.id !== selectedCardId);
     } else {
       player2.hand = player2.hand.filter(c => c.id !== selectedCardId);
@@ -178,11 +184,11 @@
     selectedCardId = null;
 
     if (gameMode === 'p2p') {
-      networkManager.send({
-        type: 'PLACE_CARD',
+      networkManager.sendMessage({
+        type: 'PLACE_CARD' as any,
+        player: userPlayerId,
         cardId: card.id,
-        slotIndex,
-        player: currentTurn
+        slotIndex
       });
     }
 
@@ -190,42 +196,59 @@
     if (filledCount === 8) {
       startAlgorithmExecution();
     } else {
-      currentTurn = currentTurn === 'player1' ? 'player2' : 'player1';
+      currentTurn = userPlayerId === 'player1' ? 'player2' : 'player1';
       if (gameMode === 'solo' && currentTurn === 'player2') {
-        setTimeout(triggerBotSeedingMove, 700);
+        setTimeout(handleBotSeedingTurn, 500);
       }
     }
   }
 
-  function triggerBotSeedingMove() {
-    if (currentTurn !== 'player2' || phase !== 'seeding') return;
+  function handleBotSeedingTurn() {
+    if (phase !== 'seeding' || currentTurn !== 'player2') return;
 
-    const move = calculateBestMove(player2.hand, slots, player2.deckArchetype);
-    selectedCardId = move.cardId;
-    handlePlaceCard(move.slotIndex);
+    const botDecision = calculateBestMove(player2.hand, slots, player2.deckArchetype);
+    if (!botDecision) return;
+
+    const card = player2.hand.find(c => c.id === botDecision.cardId);
+    if (!card) return;
+
+    slots[botDecision.slotIndex] = card;
+    slots = [...slots];
+    soundscape.playCardPlace();
+    player2.hand = player2.hand.filter(c => c.id !== card.id);
+
+    const filledCount = slots.filter(s => s !== null).length;
+    if (filledCount === 8) {
+      startAlgorithmExecution();
+    } else {
+      currentTurn = 'player1';
+    }
   }
 
-  // --- EXECUÇÃO DO MOTOR ALGORÍTMICO ---
+  // --- EXECUÇÃO DO ALGORITMO ---
   function startAlgorithmExecution() {
     phase = 'executing';
-    const sim = generateAlgorithmSteps(slots);
-    steps = sim.steps;
+    selectedCardId = null;
     currentStepIndex = 0;
+
+    const initialBoard = cloneCards(slots);
+    steps = generateAlgorithmSteps(initialBoard, player1.hp, player2.hp);
+    logs = [...logs, `Tabuleiro completo. O arquipélago divide-se em nichos.`];
+
+    startAutoPlay();
+  }
+
+  function startAutoPlay() {
+    if (playbackInterval) clearInterval(playbackInterval);
     isPlaying = true;
-    startPlaybackTimer();
-  }
 
-  function startPlaybackTimer() {
-    stopPlaybackTimer();
-    const delay = Math.max(350, Math.floor(1900 / playbackSpeed));
     playbackInterval = setInterval(() => {
-      if (isPlaying) {
-        stepForward();
-      }
-    }, delay);
+      advanceStep();
+    }, 1200 / playbackSpeed);
   }
 
-  function stopPlaybackTimer() {
+  function pauseAutoPlay() {
+    isPlaying = false;
     if (playbackInterval) {
       clearInterval(playbackInterval);
       playbackInterval = null;
@@ -233,188 +256,182 @@
   }
 
   function togglePlayPause() {
-    isPlaying = !isPlaying;
     if (isPlaying) {
-      startPlaybackTimer();
+      pauseAutoPlay();
     } else {
-      stopPlaybackTimer();
+      startAutoPlay();
     }
   }
 
   function changeSpeed(newSpeed: number) {
     playbackSpeed = newSpeed;
     if (isPlaying) {
-      startPlaybackTimer();
+      startAutoPlay();
     }
   }
 
   function stepForward() {
-    if (currentStepIndex < steps.length - 1) {
-      const nextIdx = currentStepIndex + 1;
-      const nextStep = steps[nextIdx];
-
-      if (nextStep.type === 'alpha_pause' && !player1.hasPlayedAlphaSpell) {
-        currentStepIndex = nextIdx;
-        pauseForIntervention('alpha');
-        return;
-      }
-
-      if (nextStep.type === 'beta_pause' && !player1.hasPlayedBetaSpell) {
-        currentStepIndex = nextIdx;
-        pauseForIntervention('beta');
-        return;
-      }
-
-      currentStepIndex = nextIdx;
-
-      if (nextStep.type === 'round_resolution') {
-        isPlaying = false;
-        stopPlaybackTimer();
-        handleRoundResolution();
-      }
-    } else {
-      isPlaying = false;
-      stopPlaybackTimer();
-    }
+    pauseAutoPlay();
+    advanceStep();
   }
 
   function stepBackward() {
+    pauseAutoPlay();
     if (currentStepIndex > 0) {
       currentStepIndex--;
     }
   }
 
   function resetToStart() {
+    pauseAutoPlay();
     currentStepIndex = 0;
-    isPlaying = false;
-    stopPlaybackTimer();
   }
 
-  // --- JANELAS DE INTERVENÇÃO (ALPHA & BETA) ---
-  function pauseForIntervention(windowType: 'alpha' | 'beta') {
-    isPlaying = false;
-    stopPlaybackTimer();
-    currentInterventionWindow = windowType;
-
-    if (gameMode === 'solo' && player2.spells.length > 0) {
-      const botDecision = calculateSpellDecision(
-        player2.spells,
-        currentStep?.boardState || slots,
-        player2.deckArchetype,
-        windowType
-      );
-      if (botDecision.shouldCast && botDecision.spellId && botDecision.targetSlot !== undefined) {
-        executeSpell(botDecision.spellId, botDecision.targetSlot, 'player2');
-      }
+  function advanceStep() {
+    if (currentStepIndex >= steps.length - 1) {
+      pauseAutoPlay();
+      handleResolution();
+      return;
     }
+
+    const nextStep = steps[currentStepIndex + 1];
+
+    if (nextStep.type === 'alpha_pause' && !player1.hasPlayedAlphaSpell) {
+      pauseAutoPlay();
+      currentStepIndex++;
+      currentInterventionWindow = 'alpha';
+      phase = 'alpha_window';
+      return;
+    }
+
+    if (nextStep.type === 'beta_pause' && !player1.hasPlayedBetaSpell) {
+      pauseAutoPlay();
+      currentStepIndex++;
+      currentInterventionWindow = 'beta';
+      phase = 'beta_window';
+      return;
+    }
+
+    currentStepIndex++;
   }
 
+  // --- JANELAS DE INTERVENÇÃO DE MAGIAS ---
   function handleCastSpell(spellId: string, targetSlot: number) {
-    executeSpell(spellId, targetSlot, userPlayerId);
+    const spell = player1.spells.find(s => s.id === spellId);
+    if (!spell) return;
+
+    soundscape.playSpellCast();
+    player1.spells = player1.spells.filter(s => s.id !== spellId);
+
     if (currentInterventionWindow === 'alpha') {
       player1.hasPlayedAlphaSpell = true;
     } else {
       player1.hasPlayedBetaSpell = true;
     }
+
+    const currentBoard = cloneCards(currentStep.boardState);
+    if (spell.spellTarget === 'weight_buff' && currentBoard[targetSlot]) {
+      currentBoard[targetSlot]!.weight += spell.passiveValue;
+    } else if (spell.spellTarget === 'weight_nerf' && currentBoard[targetSlot]) {
+      currentBoard[targetSlot]!.weight = Math.max(1, currentBoard[targetSlot]!.weight + spell.passiveValue);
+    } else if (spell.spellTarget === 'adjacent_swap') {
+      const neighbor = targetSlot < 7 ? targetSlot + 1 : targetSlot - 1;
+      const tmp = currentBoard[targetSlot];
+      currentBoard[targetSlot] = currentBoard[neighbor];
+      currentBoard[neighbor] = tmp;
+    }
+
+    if (gameMode === 'solo' && player2.spells.length > 0) {
+      const botDecision = calculateSpellDecision(
+        player2.spells,
+        currentBoard,
+        player2.deckArchetype,
+        currentInterventionWindow!
+      );
+      if (botDecision && botDecision.shouldCast && botDecision.spellId && botDecision.targetSlot !== undefined && botDecision.targetSlot !== -1) {
+        const spellToCast = player2.spells.find(s => s.id === botDecision.spellId);
+        if (spellToCast) {
+          player2.spells = player2.spells.filter(s => s.id !== spellToCast.id);
+          const bTarget = botDecision.targetSlot;
+          if (spellToCast.spellTarget === 'weight_buff' && currentBoard[bTarget]) {
+            currentBoard[bTarget]!.weight += spellToCast.passiveValue;
+          } else if (spellToCast.spellTarget === 'weight_nerf' && currentBoard[bTarget]) {
+            currentBoard[bTarget]!.weight = Math.max(1, currentBoard[bTarget]!.weight + spellToCast.passiveValue);
+          } else if (spellToCast.spellTarget === 'adjacent_swap') {
+            const neighbor = bTarget < 7 ? bTarget + 1 : bTarget - 1;
+            const tmp = currentBoard[bTarget];
+            currentBoard[bTarget] = currentBoard[neighbor];
+            currentBoard[neighbor] = tmp;
+          }
+        }
+      }
+    }
+
+    const remainingSteps = generateAlgorithmSteps(currentBoard, player1.hp, player2.hp);
+    const spliceIndex = remainingSteps.findIndex(s => s.type === currentStep.type);
+    if (spliceIndex !== -1) {
+      steps = [...steps.slice(0, currentStepIndex + 1), ...remainingSteps.slice(spliceIndex + 1)];
+    }
+
     currentInterventionWindow = null;
-    resumeAlgorithmAfterSpell();
+    phase = 'executing';
+    startAutoPlay();
   }
 
   function handlePassIntervention() {
     currentInterventionWindow = null;
-    isPlaying = true;
-    startPlaybackTimer();
+    phase = 'executing';
+    startAutoPlay();
   }
 
-  function executeSpell(spellId: string, targetSlot: number, player: 'player1' | 'player2') {
-    const pState = player === 'player1' ? player1 : player2;
-    const spell = pState.spells.find(s => s.id === spellId);
-    if (!spell) return;
+  // --- RESOLUÇÃO DA RODADA ---
+  function handleResolution() {
+    const finalStep = steps[steps.length - 1];
+    if (finalStep.eventPayload) {
+      const p1Damage = (finalStep.eventPayload as any).p1Damage || 0;
+      const p2Damage = (finalStep.eventPayload as any).p2Damage || 0;
 
-    pState.spells = pState.spells.filter(s => s.id !== spellId);
-
-    const currentBoard = cloneCards(currentStep?.boardState || slots);
-    const target = currentBoard[targetSlot];
-    if (!target) return;
-
-    if (spell.spellTarget === 'weight_buff') {
-      target.weight += spell.passiveValue;
-    } else if (spell.spellTarget === 'weight_nerf') {
-      target.weight = Math.max(1, target.weight + spell.passiveValue);
-    } else if (spell.spellTarget === 'adjacent_swap') {
-      const neighbor = targetSlot < 7 ? targetSlot + 1 : targetSlot - 1;
-      const temp = currentBoard[targetSlot];
-      currentBoard[targetSlot] = currentBoard[neighbor];
-      currentBoard[neighbor] = temp;
+      player1.hp = Math.max(0, player1.hp - p1Damage);
+      player2.hp = Math.max(0, player2.hp - p2Damage);
     }
 
-    soundscape.playSwapInversion();
-
-    const reSim = generateAlgorithmSteps(currentBoard);
-    steps = reSim.steps;
-    currentStepIndex = Math.min(currentStepIndex, steps.length - 1);
-  }
-
-  function resumeAlgorithmAfterSpell() {
-    isPlaying = true;
-    startPlaybackTimer();
-  }
-
-  // --- RESOLUÇÃO DA RODADA E DANO ---
-  function handleRoundResolution() {
-    phase = 'round_end';
-
-    const sim = generateAlgorithmSteps(slots);
-    const damageP1 = sim.totalDamageP1;
-    const damageP2 = sim.totalDamageP2;
-    const healP1 = sim.totalHealP1;
-    const healP2 = sim.totalHealP2;
-
-    player1.hp = Math.max(0, player1.hp - damageP1 + healP1);
-    player2.hp = Math.max(0, player2.hp - damageP2 + healP2);
-
-    try {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#e8c575', '#d8d4f2', '#6ca0dc', '#4ade80']
-      });
-    } catch (_) {}
-
-    if (player1.hp <= 0 && player2.hp <= 0) {
-      winner = 'draw';
+    if (player1.hp <= 0 || player2.hp <= 0) {
       phase = 'match_end';
-    } else if (player1.hp <= 0) {
-      winner = 'player2';
-      phase = 'match_end';
-    } else if (player2.hp <= 0) {
-      winner = 'player1';
-      phase = 'match_end';
+      if (player1.hp <= 0 && player2.hp <= 0) {
+        winner = 'draw';
+      } else if (player1.hp <= 0) {
+        winner = 'player2';
+      } else {
+        winner = 'player1';
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+    } else {
+      phase = 'round_end';
     }
   }
 
   function nextRound() {
     roundNumber++;
     slots = new Array(8).fill(null);
+    currentTurn = roundNumber % 2 === 1 ? 'player1' : 'player2';
 
-    if (player1.hand.length < 4) {
-      player1.hand = buildDeckHand(player1Archetype, 'player1').creatures;
-    }
-    if (player2.hand.length < 4) {
-      player2.hand = buildDeckHand(player2Archetype, 'player2').creatures;
-    }
+    const p1New = buildDeckHand(player1.deckArchetype, 'player1');
+    const p2New = buildDeckHand(player2.deckArchetype, 'player2');
 
+    player1.hand = p1New.creatures;
+    player2.hand = p2New.creatures;
     player1.hasPlayedAlphaSpell = false;
     player1.hasPlayedBetaSpell = false;
     player2.hasPlayedAlphaSpell = false;
     player2.hasPlayedBetaSpell = false;
 
-    currentTurn = roundNumber % 2 === 1 ? 'player1' : 'player2';
     phase = 'seeding';
-
     if (gameMode === 'solo' && currentTurn === 'player2') {
-      setTimeout(triggerBotSeedingMove, 700);
+      setTimeout(handleBotSeedingTurn, 500);
     }
   }
 
@@ -422,32 +439,28 @@
     phase = 'lobby';
     hostRoomCode = '';
     connectionError = null;
-    networkManager.disconnect();
   }
 
-  // --- REDE P2P PEERJS ---
+  // --- P2P HOST & JOIN ---
   async function handleHostRoom() {
     isConnectingP2P = true;
     connectionError = null;
 
-    networkManager.setCallbacks(
-      (msg: NetworkMessage) => handleIncomingNetworkMessage(msg),
-      (status, detail) => {
-        if (status === 'connected') {
-          isConnectingP2P = false;
-          startMatch('p2p', player1Archetype, player2Archetype);
-        } else if (status === 'error') {
-          isConnectingP2P = false;
-          connectionError = detail || 'Erro de conexão P2P.';
-        }
-      }
-    );
-
     try {
-      const code = await networkManager.hostRoom();
+      const code = await networkManager.initializeHost(
+        () => {
+          isConnectingP2P = false;
+          startMatch('p2p', player1Archetype, 'raiz');
+        },
+        handleIncomingNetworkMessage,
+        (err) => {
+          connectionError = err;
+          isConnectingP2P = false;
+        }
+      );
       hostRoomCode = code;
     } catch (err: any) {
-      connectionError = err?.message || 'Falha ao criar sala P2P.';
+      connectionError = err?.message || 'Falha ao iniciar P2P.';
       isConnectingP2P = false;
     }
   }
@@ -455,18 +468,17 @@
   async function handleJoinRoom(code: string) {
     isConnectingP2P = true;
     connectionError = null;
-    userPlayerId = 'player2';
 
-    networkManager.setCallbacks(
-      (msg: NetworkMessage) => handleIncomingNetworkMessage(msg),
-      (status, detail) => {
-        if (status === 'connected') {
-          isConnectingP2P = false;
-          startMatch('p2p', player1Archetype, player2Archetype);
-        } else if (status === 'error') {
-          isConnectingP2P = false;
-          connectionError = detail || 'Não foi possível conectar à sala.';
-        }
+    networkManager.initializeGuest(
+      () => {
+        isConnectingP2P = false;
+        userPlayerId = 'player2';
+        startMatch('p2p', 'raiz', player1Archetype);
+      },
+      handleIncomingNetworkMessage,
+      (err) => {
+        connectionError = err;
+        isConnectingP2P = false;
       }
     );
 
@@ -479,13 +491,13 @@
   }
 
   function handleIncomingNetworkMessage(msg: NetworkMessage) {
-    if (msg.type === 'PLACE_CARD') {
-      if (slots[msg.slotIndex] === null) {
+    if (msg.type === 'PLACE_CARD' as any) {
+      if (slots[msg.slotIndex!] === null) {
         const currentHand = msg.player === 'player1' ? player1.hand : player2.hand;
         const card = currentHand.find(c => c.id === msg.cardId) || {
-          id: msg.cardId,
+          id: msg.cardId!,
           name: 'Fenrir Lupino',
-          speciesName: 'Wolf Anthro Warrior',
+          speciesName: 'Guerreiro Lupino',
           weight: 5,
           originalWeight: 5,
           archetype: 'rajadas',
@@ -497,7 +509,7 @@
           passiveDescription: ''
         };
 
-        slots[msg.slotIndex] = card;
+        slots[msg.slotIndex!] = card;
         soundscape.playCardPlace();
 
         if (msg.player === 'player1') {
@@ -518,90 +530,88 @@
 </script>
 
 <!-- CONTAINER PRINCIPAL DO JOGO -->
-<div class="relative w-full min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#140d08] text-[#ede0c8] font-sans">
-  <!-- Pano de Fundo Cenográfico -->
-  <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-b from-[#1c1d32] via-[#43313d] to-[#140d08] opacity-95"></div>
-  </div>
+<div class="relative w-full min-h-screen flex flex-col justify-between overflow-x-hidden text-cm-ink select-none">
+  <!-- Pano de Fundo Cenográfico: Céu Pastoral, Nuvens Deslizantes e Ilhas Flutuantes (Cloud Meadow) -->
+  <SkyBackdrop />
 
-  <!-- BARRA DE STATUS DE COMBATE HUD COM RETRATO ANTHRO FURRY VETORIAL -->
+  <!-- BARRA DE STATUS HUD IN-GAME (AUTÊNTICA AO SCREENSHOT 01 DE CLOUD MEADOW) -->
   {#if phase !== 'lobby'}
-    <header class="relative z-30 w-full max-w-5xl mx-auto px-4 py-2 flex items-center justify-between border-b-2 border-[#5a3c26] bg-[#22160d]/90 backdrop-blur-md shadow-xl">
-      <!-- Jogador 1 (Guardião Anthro P1) -->
-      <div class="flex items-center gap-2.5">
-        <div class="relative">
-          <div class="w-12 h-12 rounded-full cloud-portrait-medallion overflow-hidden shadow-lg border-2 border-sky-400 p-0.5 bg-[#170f09]">
-            <AnthroArt character={ARCHETYPES[player1.deckArchetype].artKey} class="w-full h-full" />
+    <header class="relative z-30 w-full max-w-5xl mx-auto px-3 sm:px-4 pt-3 pb-1 flex items-center justify-between gap-3">
+      <!-- Pílula de Metal Musgo / Ardósia com Rebites e Trilho Central (ref 01) -->
+      <div class="flex-1 cm-hud-plate px-3 sm:px-4 py-2 rounded-full flex items-center justify-between gap-2 sm:gap-4">
+        <!-- Jogador 1 (Comandante): Medalhão HP Dourado + Barra Menta Segmentada -->
+        <div class="flex items-center gap-2">
+          <!-- Medalhão HP Circular Dourado -->
+          <div class="cm-coin w-8 h-8 text-[12px] shadow-md flex items-center justify-center font-bold">
+            HP
           </div>
-          <span class="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded bg-sky-900 border border-sky-400 text-sky-200 text-[8.5px] font-black font-mono shadow">
-            P1
-          </span>
+
+          <!-- Barra de HP com Vidro e Segmentos -->
+          <div class="flex flex-col gap-0.5">
+            <div class="flex items-center gap-1.5 text-xs font-bold leading-none">
+              <span class="text-white drop-shadow-[1px_1px_0_#1e1d21]">{player1.name}</span>
+              <span class="text-[11px] px-1.5 py-0.2 rounded-[2px] bg-[#1a1b1f] text-[#86efac] font-mono">
+                {player1.hp}/30
+              </span>
+            </div>
+            <div class="w-24 sm:w-36 cm-hud-bar rounded-full">
+              <div
+                class="cm-bar-fill is-hp transition-all duration-300"
+                style="width: {(player1.hp / 30) * 100}%"
+              ></div>
+            </div>
+          </div>
         </div>
 
-        <div class="flex flex-col gap-0.5">
-          <div class="flex items-center gap-1.5">
-            <span class="text-xs font-black text-[#ffeaae] font-serif tracking-wide">{player1.name}</span>
-            <span class="text-[9px] px-1.5 rounded bg-emerald-950/80 border border-emerald-600/60 text-emerald-300 font-mono font-bold">
-              {ARCHETYPES[player1.deckArchetype].species.split(' ')[0]}
-            </span>
+        <!-- Centro: Bandeja de Botões Rápidos de Inventário com Rebites (ref 01) -->
+        <div class="cm-tray px-3 py-1 hidden sm:flex items-center gap-2 text-white">
+          <div class="cm-rivet"></div>
+          <button
+            onclick={() => isTutorialOpen = true}
+            class="cm-tray-btn"
+            title="Grimório / Manual"
+          >
+            <PixelIcon name="scroll" size={17} />
+          </button>
+          <div class="cm-tray-btn" title="Inventário / Mão">
+            <PixelIcon name="bag" size={17} />
+          </div>
+          <div class="cm-tray-btn" title="Calendário de Batalha">
+            <PixelIcon name="calendar" size={17} />
+          </div>
+          <div class="px-2 py-0.5 rounded-[3px] bg-[#202422] border border-white/20 text-xs font-bold text-cm-gold font-mono">
+            R{roundNumber}
+          </div>
+          <div class="cm-rivet"></div>
+        </div>
+
+        <!-- Jogador 2 (Oponente): Medalhão HP + Barra do Oponente -->
+        <div class="flex items-center gap-2 flex-row-reverse text-right">
+          <!-- Medalhão HP do Oponente -->
+          <div class="cm-coin w-8 h-8 text-[12px] shadow-md flex items-center justify-center font-bold !bg-[#e2482f] !text-white">
+            HP
           </div>
 
-          <div class="w-32 sm:w-44 h-3.5 cloud-gauge-track flex items-center p-0.5">
-            <div
-              class="h-full cloud-bar-hp rounded-full transition-all duration-300 relative"
-              style="width: {(player1.hp / 30) * 100}%"
-            ></div>
-          </div>
-          <div class="flex justify-between items-center text-[9.5px] font-mono font-bold px-0.5">
-            <span class="text-emerald-400">HP {player1.hp} / 30</span>
+          <div class="flex flex-col gap-0.5 items-end">
+            <div class="flex items-center gap-1.5 text-xs font-bold leading-none">
+              <span class="text-[11px] px-1.5 py-0.2 rounded-[2px] bg-[#1a1b1f] text-[#86efac] font-mono">
+                {player2.hp}/30
+              </span>
+              <span class="text-white drop-shadow-[1px_1px_0_#1e1d21]">{player2.name}</span>
+            </div>
+            <div class="w-24 sm:w-36 cm-hud-bar rounded-full">
+              <div
+                class="cm-bar-fill is-hp transition-all duration-300"
+                style="width: {(player2.hp / 30) * 100}%"
+              ></div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Centro: Indicador de Rodada & Cronômetro -->
-      <div class="flex flex-col items-center">
-        <div class="px-3 py-0.5 rounded-full bg-gradient-to-r from-[#6b4712] via-[#cfa049] to-[#6b4712] border border-[#ffeaae] shadow flex items-center gap-2">
-          <span class="text-stone-950 font-black text-xs uppercase tracking-wider font-serif">
-            Rodada {roundNumber}
-          </span>
-        </div>
-        <button
-          onclick={() => isTutorialOpen = true}
-          class="text-[9.5px] text-stone-400 hover:text-[#ffeaae] underline font-mono mt-0.5"
-        >
-          📖 Manual O(n log n)
-        </button>
-      </div>
-
-      <!-- Jogador 2 (Guardião Anthro P2) -->
-      <div class="flex items-center gap-2.5 text-right flex-row-reverse">
-        <div class="relative">
-          <div class="w-12 h-12 rounded-full cloud-portrait-medallion overflow-hidden shadow-lg border-2 border-amber-400 p-0.5 bg-[#170f09]">
-            <AnthroArt character={ARCHETYPES[player2.deckArchetype].artKey} class="w-full h-full" />
-          </div>
-          <span class="absolute -bottom-1 -left-1 px-1.5 py-0.2 rounded bg-amber-900 border border-amber-400 text-amber-200 text-[8.5px] font-black font-mono shadow">
-            P2
-          </span>
-        </div>
-
-        <div class="flex flex-col gap-0.5 items-end">
-          <div class="flex items-center gap-1.5">
-            <span class="text-[9px] px-1.5 rounded bg-amber-950/80 border border-amber-600/60 text-amber-300 font-mono font-bold">
-              {ARCHETYPES[player2.deckArchetype].species.split(' ')[0]}
-            </span>
-            <span class="text-xs font-black text-[#ffeaae] font-serif tracking-wide">{player2.name}</span>
-          </div>
-
-          <div class="w-32 sm:w-44 h-3.5 cloud-gauge-track flex items-center p-0.5 justify-end">
-            <div
-              class="h-full cloud-bar-hp rounded-full transition-all duration-300 relative"
-              style="width: {(player2.hp / 30) * 100}%"
-            ></div>
-          </div>
-          <div class="flex justify-between items-center text-[9.5px] font-mono font-bold px-0.5 w-full">
-            <span class="text-emerald-400">HP {player2.hp} / 30</span>
-          </div>
-        </div>
+      <!-- Relógio Circular com Tag Suspensa por Corrente (Screenshot 01) -->
+      <div class="relative pl-1 shrink-0">
+        <SkyClock tag="{roundNumber}ª" />
       </div>
     </header>
   {/if}
@@ -668,71 +678,97 @@
       />
     {/if}
 
-    <!-- MODAL DE FIM DE RODADA ESTILO PERGAMINHO CLOUD MEADOW -->
+    <!-- MODAL DE FIM DE RODADA ESTILO JANELA CLOUD MEADOW (SCREENSHOTS 02, 03 & 05) -->
     {#if phase === 'round_end'}
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-        <div class="max-w-md w-full cloud-wood-panel rounded-3xl p-6 shadow-2xl text-center flex flex-col items-center gap-4 border-2 border-[#d4a34b]">
-          <div class="w-14 h-14 rounded-full cloud-portrait-medallion flex items-center justify-center text-2xl">
-            🌾
+      <div class="cm-overlay select-none cm-anim-pop">
+        <div class="cm-window max-w-md w-full p-2 text-center">
+          <div class="cm-window-body overflow-hidden">
+            <!-- Banner Azul Royal com Runas (ref 06) -->
+            <RoyalBanner
+              runes="relatorio"
+              title="Relatório de Voo • Rodada {roundNumber}"
+              subtitle="Cálculo do impacto das inversões nos estratos celestes"
+            />
+
+            <div class="cm-parch p-5 flex flex-col items-center gap-4 text-cm-ink">
+              <!-- Placar Comparativo em Caixa Escura (ref 05) -->
+              <div class="w-full grid grid-cols-3 gap-2 p-3 bg-[#1b1b1e] text-white rounded-[4px] border-2 border-cm-frame shadow-inner text-xs font-bold">
+                <div class="flex flex-col items-center">
+                  <span class="text-[#8fc3ee]">P1 HP</span>
+                  <span class="text-xl text-white font-mono">{player1.hp}</span>
+                </div>
+                <div class="flex flex-col items-center border-x-2 border-cm-slate-line px-2">
+                  <span class="text-cm-gold">Inversões</span>
+                  <span class="text-xl text-cm-gold font-mono">{rTotal}</span>
+                </div>
+                <div class="flex flex-col items-center">
+                  <span class="text-[#f9d57c]">P2 HP</span>
+                  <span class="text-xl text-white font-mono">{player2.hp}</span>
+                </div>
+              </div>
+
+              <!-- Balão de Fala do Assistente (Screenshot 03) -->
+              <div class="cm-bubble tail-bottom p-3 text-xs leading-relaxed text-cm-ink">
+                "As correntes eólicas foram recalculadas pelo algoritmo O(n log n). O arquipélago está pronto para a próxima semeadura!"
+              </div>
+
+              <button
+                onclick={nextRound}
+                class="cm-btn w-full py-3 text-sm"
+              >
+                <PixelIcon name="sword" size={16} />
+                <span>Iniciar Próxima Semeadura ▶</span>
+              </button>
+            </div>
           </div>
-          <h2 class="text-xl font-black text-[#ffeaae] font-serif">
-            Conclusão da Rodada {roundNumber}
-          </h2>
-
-          <div class="p-3.5 rounded-2xl cloud-parchment text-xs font-mono w-full flex justify-around shadow-inner">
-            <div>
-              <span class="text-sky-800 font-bold block">P1 HP</span>
-              <span class="text-base font-black text-sky-950">{player1.hp}</span>
-            </div>
-            <div class="border-x border-[#cbb28b] px-4">
-              <span class="text-amber-800 font-bold block">r_total</span>
-              <span class="text-base font-black text-amber-950">{rTotal}</span>
-            </div>
-            <div>
-              <span class="text-emerald-800 font-bold block">P2 HP</span>
-              <span class="text-base font-black text-emerald-950">{player2.hp}</span>
-            </div>
-          </div>
-
-          <p class="text-xs text-[#c9b596] leading-relaxed">
-            As sementes de combate dissolveram-se em pólen dourado sobre as ilhas.
-          </p>
-
-          <button
-            onclick={nextRound}
-            class="w-full py-3 rounded-2xl cloud-btn-brass text-xs uppercase font-black tracking-wider shadow-lg active:scale-95"
-          >
-            Iniciar Próxima Semeadura ▶
-          </button>
         </div>
       </div>
     {/if}
 
-    <!-- MODAL DE FIM DE PARTIDA (VITÓRIA / DERROTA) -->
+    <!-- MODAL DE FIM DE PARTIDA (ESTILO VERSUS & ESTANDARTE SCREENSHOT 05) -->
     {#if phase === 'match_end'}
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fadeIn">
-        <div class="max-w-md w-full cloud-wood-panel rounded-3xl p-6 shadow-2xl text-center flex flex-col items-center gap-4 border-2 border-[#d4a34b]">
-          <span class="text-4xl animate-bounce">
-            {winner === userPlayerId ? '🏆' : winner === 'draw' ? '⚖️' : '💔'}
-          </span>
-          <h2 class="text-xl font-black text-[#ffeaae] font-serif">
-            {winner === userPlayerId
-              ? 'Vitória Celeste!'
-              : winner === 'draw'
-              ? 'Empate no Vórtice!'
-              : 'Derrota nos Estratos!'}
-          </h2>
-          <p class="text-xs text-[#ede0c8] leading-relaxed">
-            {winner === userPlayerId
-              ? 'Seus guardiões anthro dominaram as correntes e conquistaram os ventos da pradaria através da harmonia algorítmica!'
-              : 'O adversário manipulou as inversões com maestria e sobrepujou suas defesas.'}
-          </p>
-          <button
-            onclick={restartGame}
-            class="w-full py-3 rounded-2xl cloud-btn-brass text-xs uppercase font-black tracking-wider shadow-lg active:scale-95"
-          >
-            Voltar ao Menu Principal ⚔️
-          </button>
+      <div class="cm-overlay select-none cm-anim-pop">
+        <div class="cm-window max-w-lg w-full p-2 text-center">
+          <div class="cm-window-body overflow-hidden">
+            <RoyalBanner
+              runes="duelo final"
+              title="Duelo Celeste Finalizado"
+            />
+
+            <div class="cm-parch p-6 flex flex-col items-center gap-4 text-cm-ink">
+              <!-- Estandarte com Ícone do Duelo -->
+              <div class="flex items-center justify-center gap-4 py-2">
+                <Pennant
+                  emblem={winner === 'player1' ? 'star' : 'sword'}
+                  tone={winner === 'player1' ? 'blue' : 'red'}
+                  class="w-28 h-auto"
+                />
+              </div>
+
+              <div class="flex flex-col items-center gap-1">
+                <h2 class="cm-title text-2xl sm:text-3xl text-cm-ink">
+                  {winner === userPlayerId
+                    ? 'Vitória Celeste!'
+                    : winner === 'draw'
+                    ? 'Empate no Vórtice!'
+                    : 'Derrota nos Estratos!'}
+                </h2>
+                <p class="text-xs sm:text-sm text-cm-ink-soft max-w-sm leading-relaxed">
+                  {winner === userPlayerId
+                    ? 'Seus guardiões dominaram as correntes térmicas e conquistaram os céus com maestria algorítmica!'
+                    : 'O adversário manipulou as inversões e sobrepujou suas defesas nas alas.'}
+                </p>
+              </div>
+
+              <button
+                onclick={restartGame}
+                class="cm-btn w-full py-3.5 text-sm"
+              >
+                <PixelIcon name="sword" size={16} />
+                <span>Voltar ao Menu Principal</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     {/if}

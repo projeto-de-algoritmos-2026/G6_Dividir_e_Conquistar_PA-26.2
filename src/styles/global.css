@@ -1,198 +1,711 @@
 @import "tailwindcss";
 
+/* =====================================================================
+   CLOUD MEADOW UI KIT
+   Referências: /references/01..06 (HUD, diálogo, receitas, inventário,
+   preparação de combate e calendário).
+   Regras de ouro do estilo:
+     - fonte pixel, cantos quase retos, sombras duras (sem blur)
+     - moldura preta grossa + faixa cáqui + miolo escuro ou pergaminho
+     - cores chapadas; brilho/sombra feitos com faixas "inset" de 2-3px
+   ===================================================================== */
+
+@theme {
+  --font-pixel: 'Pixelify Sans', 'VT323', ui-monospace, monospace;
+  --font-sans: 'Pixelify Sans', 'VT323', ui-monospace, monospace;
+  --font-serif: 'Pixelify Sans', 'VT323', ui-monospace, monospace;
+  --font-mono: 'Pixelify Sans', 'VT323', ui-monospace, monospace;
+
+  --color-cm-ink: #3a302a;
+  --color-cm-ink-soft: #6e5c4b;
+  --color-cm-frame: #1e1d21;
+  --color-cm-frame-2: #2e2d33;
+  --color-cm-tan: #d8c597;
+  --color-cm-tan-dark: #a8925f;
+  --color-cm-parch: #f6e9c6;
+  --color-cm-parch-hi: #fbf3dc;
+  --color-cm-parch-lo: #e9d7a8;
+  --color-cm-slate: #232327;
+  --color-cm-slate-2: #303035;
+  --color-cm-slate-line: #47474e;
+  --color-cm-royal: #4459ad;
+  --color-cm-royal-dark: #2f4ba0;
+  --color-cm-royal-line: #5869b0;
+  --color-cm-pennant: #3a7bbd;
+  --color-cm-pennant-dark: #2b5f98;
+  --color-cm-cream: #f2e5bf;
+  --color-cm-gold: #f5c542;
+  --color-cm-gold-hi: #ffe48a;
+  --color-cm-gold-dark: #c08f17;
+  --color-cm-hp: #45c552;
+  --color-cm-mp: #f06ac4;
+  --color-cm-bubble: #f9d57c;
+  --color-cm-cloud: #3d5d94;
+  --color-cm-cloud-hi: #a7c6e6;
+  --color-cm-terra: #8e3b2c;
+  --color-cm-terra-hi: #c8705a;
+  --color-cm-stamp: #e2482f;
+  --color-cm-moss: #3b4239;
+  --color-cm-moss-dark: #22271f;
+  --color-cm-brass: #c9a456;
+  --color-cm-brass-dark: #85672c;
+  --color-cm-ala-a: #3f56a8;
+  --color-cm-ala-b: #c2622d;
+}
+
 @layer base {
-  :root {
-    --color-parchment-light: #f7f1e1;
-    --color-parchment: #ede0c8;
-    --color-parchment-dark: #d5c09e;
-    --color-leather-dark: #2a1b12;
-    --color-leather-border: #442d1e;
-    --color-wood-walnut: #1e140d;
-    --color-wood-panel: #2e1d13;
-    --color-brass-highlight: #ffebb0;
-    --color-brass-main: #d4a34b;
-    --color-brass-shadow: #875c1d;
-    --color-brass-dark: #4e320d;
-    --color-emerald-hp: #22c55e;
-    --color-sapphire-aether: #38bdf8;
-  }
-
+  html,
   body {
-    font-family: 'Outfit', sans-serif;
-    background-color: #120c09;
-    color: #ede0c8;
+    font-family: var(--font-pixel);
+    color: var(--color-cm-ink);
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+    min-height: 100%;
+    background-color: #7fb7e2;
+    background-image:
+      linear-gradient(180deg, #4f8fcf 0%, #79b4e3 38%, #b4dbf1 72%, #e5f3f8 100%);
+    background-attachment: fixed;
+    background-size: cover;
+    background-repeat: no-repeat;
   }
 
-  h1, h2, h3, .font-cinzel {
-    font-family: 'Cinzel', serif;
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  ::selection {
+    background: var(--color-cm-gold);
+    color: var(--color-cm-frame);
+  }
+
+  /* Scrollbar "trilho de ferro" como no livro de receitas (ref 03) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #5c5a60 #1e1d21;
   }
 }
 
-/* ========================================================
-   SKEUOMORPHIC CLOUD MEADOW UI STYLING & TEXTURES
-   ======================================================== */
-
-/* Textura de Pergaminho Envelhecido com Vinheta */
-.cloud-parchment {
-  background: radial-gradient(circle at 50% 30%, #fbf6ec 0%, #ede1cb 70%, #d8c39e 100%);
-  color: #2e1e12;
-  box-shadow: inset 0 0 16px rgba(109, 74, 38, 0.35), 0 4px 12px rgba(0, 0, 0, 0.4);
-  border: 1px solid #cbb28b;
+@layer components {
+/* ---------------------------------------------------------------------
+   TEXTO
+   --------------------------------------------------------------------- */
+.cm-pixel {
+  font-family: var(--font-pixel);
 }
 
-/* Painel de Madeira Nobre / Couro Escuro de Zepelim */
-.cloud-wood-panel {
-  background: linear-gradient(180deg, #322115 0%, #20140c 50%, #170d07 100%);
-  border: 2px solid #5a3c26;
-  box-shadow: 
-    inset 0 1px 1px rgba(255, 235, 176, 0.2),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.8),
-    0 8px 24px rgba(0, 0, 0, 0.6);
-  position: relative;
+/* Texto claro com contorno de 1px (relógio, títulos sobre o azul) */
+.cm-outline {
+  text-shadow:
+    -2px 0 0 #1e1d21, 2px 0 0 #1e1d21, 0 -2px 0 #1e1d21, 0 2px 0 #1e1d21,
+    -2px -2px 0 #1e1d21, 2px -2px 0 #1e1d21, -2px 2px 0 #1e1d21, 2px 2px 0 #1e1d21;
 }
 
-/* Rebites de Bronze 3D (Cloud Meadow Style) */
-.cloud-rivet {
-  width: 7px;
-  height: 7px;
-  border-radius: 9999px;
-  background: radial-gradient(circle at 30% 30%, #ffe9a6 0%, #c8953c 60%, #5a3810 100%);
-  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+.cm-outline-thin {
+  text-shadow:
+    -1px 0 0 #1e1d21, 1px 0 0 #1e1d21, 0 -1px 0 #1e1d21, 0 1px 0 #1e1d21,
+    1px 1px 0 #1e1d21, -1px 1px 0 #1e1d21, 1px -1px 0 #1e1d21, -1px -1px 0 #1e1d21;
 }
 
-/* Moldura Chanfrada de Latão / Bronze Dourado */
-.cloud-brass-frame {
-  border: 2px solid #d4a34b;
-  box-shadow:
-    inset 0 1px 2px rgba(255, 235, 176, 0.5),
-    inset 0 -1px 2px rgba(78, 50, 13, 0.8),
-    0 2px 6px rgba(0, 0, 0, 0.5);
-}
-
-/* Botões Chanfrados Físicos de Latão e Madeira */
-.cloud-btn-brass {
-  background: linear-gradient(180deg, #e8b95d 0%, #c48b2c 45%, #9e6a17 80%, #7d520e 100%);
-  border-top: 1px solid #fff2c4;
-  border-left: 1px solid #e8b95d;
-  border-right: 1px solid #5a3810;
-  border-bottom: 2px solid #362007;
-  color: #2b1803;
-  text-shadow: 0 1px 0 rgba(255, 243, 196, 0.6);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4);
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  transition: all 0.15s ease;
-}
-
-.cloud-btn-brass:hover:not(:disabled) {
-  background: linear-gradient(180deg, #f7cb73 0%, #dca137 45%, #b67d22 80%, #946214 100%);
-  box-shadow: 0 4px 10px rgba(212, 163, 75, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.6);
-  transform: translateY(-1px);
-}
-
-.cloud-btn-brass:active:not(:disabled) {
-  background: linear-gradient(180deg, #a6711c 0%, #c48b2c 55%, #e8b95d 100%);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
-  transform: translateY(1px);
-}
-
-/* Botão Secundário de Couro / Madeira Escura */
-.cloud-btn-wood {
-  background: linear-gradient(180deg, #442d1f 0%, #2e1d13 50%, #1e120b 100%);
-  border: 1px solid #734d31;
-  border-bottom: 2px solid #140b06;
-  color: #ede0c8;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+.cm-title {
+  font-family: var(--font-pixel);
   font-weight: 700;
-  transition: all 0.15s ease;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
-.cloud-btn-wood:hover:not(:disabled) {
-  background: linear-gradient(180deg, #533726 0%, #3b2518 50%, #28180e 100%);
-  border-color: #a8744b;
-  transform: translateY(-1px);
-}
-
-/* Trilho de Medidor Mecânico (Gauge Track Recess) */
-.cloud-gauge-track {
-  background: linear-gradient(180deg, #0e0906 0%, #1f140e 100%);
-  border: 2px solid #5a3c26;
-  border-radius: 9999px;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255, 235, 176, 0.15);
+/* ---------------------------------------------------------------------
+   JANELA (refs 03 e 05): borda preta grossa → faixa cáqui → miolo
+   --------------------------------------------------------------------- */
+.cm-window {
   position: relative;
+  background: var(--color-cm-tan);
+  border: 5px solid var(--color-cm-frame);
+  border-radius: 10px;
+  padding: 7px;
+  box-shadow:
+    inset 0 3px 0 #efe2bb,
+    inset 0 -3px 0 var(--color-cm-tan-dark),
+    0 6px 0 rgba(20, 18, 34, 0.35);
+}
+
+.cm-window-body {
+  position: relative;
+  border: 3px solid var(--color-cm-frame);
+  border-radius: 3px;
+}
+
+.cm-window-body.is-dark {
+  background: var(--color-cm-slate);
+  color: var(--color-cm-cream);
+}
+
+.cm-window-body.is-parch {
+  color: var(--color-cm-ink);
+}
+
+/* Janela "cozinha"/inventário: miolo em pergaminho escuro (ref 03) */
+.cm-window.is-dark-frame {
+  background: var(--color-cm-slate-2);
+  box-shadow:
+    inset 0 0 0 3px var(--color-cm-tan),
+    inset 0 0 0 5px var(--color-cm-frame),
+    0 6px 0 rgba(20, 18, 34, 0.35);
+  padding: 10px;
+}
+
+/* ---------------------------------------------------------------------
+   PERGAMINHO com manchas suaves (refs 02, 03 e 06)
+   --------------------------------------------------------------------- */
+.cm-parch {
+  background-color: var(--color-cm-parch);
+  background-image:
+    radial-gradient(ellipse 140px 60px at 12% 18%, rgba(255, 250, 232, 0.85), transparent 70%),
+    radial-gradient(ellipse 180px 80px at 82% 72%, rgba(230, 210, 160, 0.55), transparent 70%),
+    radial-gradient(ellipse 100px 46px at 62% 12%, rgba(235, 218, 176, 0.6), transparent 70%),
+    radial-gradient(ellipse 160px 70px at 28% 88%, rgba(255, 248, 226, 0.75), transparent 70%),
+    radial-gradient(ellipse 60px 30px at 92% 22%, rgba(222, 200, 150, 0.45), transparent 70%),
+    radial-gradient(circle at 40% 40%, rgba(214, 186, 130, 0.35) 0 1px, transparent 2px),
+    radial-gradient(circle at 70% 30%, rgba(214, 186, 130, 0.35) 0 1px, transparent 2px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 37px 41px, 53px 47px;
+}
+
+.cm-parch-hi {
+  background: var(--color-cm-parch-hi);
+}
+
+/* ---------------------------------------------------------------------
+   CAIXA DE DIÁLOGO (ref 02): pergaminho + linha dupla nas bordas
+   --------------------------------------------------------------------- */
+.cm-dialog {
+  position: relative;
+  border: 3px solid #3b3a3f;
+  box-shadow:
+    inset 0 0 0 4px var(--color-cm-parch),
+    inset 0 0 0 6px #6b6152,
+    0 6px 0 rgba(20, 18, 34, 0.3);
+  border-radius: 2px;
+  color: var(--color-cm-ink);
+}
+
+/* Barrinha central na borda inferior do diálogo (ref 02: "»") */
+.cm-dialog-tab {
+  position: absolute;
+  left: 50%;
+  bottom: -3px;
+  transform: translateX(-50%);
+  height: 6px;
+  width: 30%;
+  background: var(--color-cm-parch);
+  border-left: 3px solid #3b3a3f;
+  border-right: 3px solid #3b3a3f;
+}
+
+/* ---------------------------------------------------------------------
+   BANNER AZUL ROYAL COM RUNAS (ref 06)
+   --------------------------------------------------------------------- */
+.cm-royal-banner {
+  position: relative;
+  background: var(--color-cm-royal);
+  color: var(--color-cm-cream);
+  border-bottom: 4px solid var(--color-cm-royal-dark);
+  box-shadow: inset 0 3px 0 #5a6fc2;
   overflow: hidden;
 }
 
-/* Barra de Vida Verde Esmeralda Vibrante com Brilho Superior */
-.cloud-bar-hp {
-  background: linear-gradient(180deg, #86efac 0%, #22c55e 35%, #15803d 75%, #14532d 100%);
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
-  position: relative;
-}
-.cloud-bar-hp::after {
-  content: '';
-  position: absolute;
-  top: 1px;
-  left: 2px;
-  right: 2px;
-  height: 35%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%);
-  border-radius: 9999px;
+/* ---------------------------------------------------------------------
+   PAINÉIS ESCUROS / SLOTS (ref 05)
+   --------------------------------------------------------------------- */
+.cm-slot {
+  background: #1b1b1e;
+  border: 3px solid #3c3c42;
+  border-radius: 3px;
+  box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.35);
 }
 
-/* Barra de Mana / Éter Azul Safira */
-.cloud-bar-aether {
-  background: linear-gradient(180deg, #bae6fd 0%, #38bdf8 35%, #0284c7 75%, #075985 100%);
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
-  position: relative;
-}
-.cloud-bar-aether::after {
-  content: '';
-  position: absolute;
-  top: 1px;
-  left: 2px;
-  right: 2px;
-  height: 35%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 100%);
-  border-radius: 9999px;
+.cm-slot-light {
+  background: #2b2b30;
+  border: 3px solid #45454c;
+  border-radius: 3px;
 }
 
-/* Medalhão de Retrato com Borda de Latão e Asas */
-.cloud-portrait-medallion {
-  background: radial-gradient(circle, #2f2015 0%, #150d08 100%);
-  border: 3px solid #d4a34b;
+/* Caixinha de estatística com ícone colorido (ref 05) */
+.cm-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1b1b1e;
+  border: 3px solid #3c3c42;
+  border-radius: 3px;
+  padding: 3px 8px 3px 3px;
+  color: var(--color-cm-cream);
+}
+
+.cm-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 2px;
+  border: 2px solid #1e1d21;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------
+   BARRAS (ref 05: trilho branco; ref 01: HP verde com brilho)
+   --------------------------------------------------------------------- */
+.cm-bar {
+  position: relative;
+  height: 14px;
+  background: #f3efe4;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cm-bar > .cm-bar-fill {
+  height: 100%;
+  transition: width 0.35s steps(8);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.35);
+}
+
+.cm-bar-fill.is-hp { background: var(--color-cm-hp); }
+.cm-bar-fill.is-mp { background: var(--color-cm-mp); }
+.cm-bar-fill.is-gold { background: var(--color-cm-gold); }
+.cm-bar-fill.is-blue { background: #4f8fe0; }
+
+/* Barra de HP do HUD (ref 01) */
+.cm-hud-bar {
+  position: relative;
+  height: 18px;
+  background: #15171a;
+  border: 3px solid #1e1d21;
+  border-left: none;
+  box-shadow: inset 0 -3px 0 #2c3030;
+  overflow: hidden;
+}
+
+.cm-hud-bar > .cm-bar-fill {
+  height: 100%;
+  background: #4fc25a;
+  box-shadow: inset 0 4px 0 #8de38c, inset 0 -3px 0 #2f9a3e;
+  transition: width 0.4s steps(10);
+}
+
+/* ---------------------------------------------------------------------
+   BOTÕES
+   --------------------------------------------------------------------- */
+.cm-btn,
+.cm-btn-dark,
+.cm-btn-blue,
+.cm-btn-cream {
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  border-radius: 4px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: transform 0.06s steps(2), filter 0.1s;
+  user-select: none;
+}
+
+/* Botão dourado (ref 03: filtro de estrelas ativo) */
+.cm-btn {
+  background: var(--color-cm-gold);
+  color: #2a1f0a;
+  border: 3px solid var(--color-cm-frame);
   box-shadow:
-    inset 0 0 8px rgba(0, 0, 0, 0.8),
-    0 0 0 1px #5a3810,
-    0 4px 10px rgba(0, 0, 0, 0.7);
+    inset 0 3px 0 var(--color-cm-gold-hi),
+    inset 0 -4px 0 var(--color-cm-gold-dark),
+    0 3px 0 rgba(20, 18, 34, 0.45);
 }
 
-/* Notches / Marcadores de Segmento do Medidor */
-.cloud-gauge-ticks {
-  background-image: repeating-linear-gradient(
-    90deg,
-    transparent 0,
-    transparent 23px,
-    rgba(0, 0, 0, 0.6) 23px,
-    rgba(0, 0, 0, 0.6) 25px
-  );
+/* Botão ardósia (ref 05: abas inferiores) */
+.cm-btn-dark {
+  background: #3d3d43;
+  color: var(--color-cm-cream);
+  border: 3px solid var(--color-cm-frame);
+  box-shadow:
+    inset 0 3px 0 #57575e,
+    inset 0 -4px 0 #2a2a2f,
+    0 3px 0 rgba(20, 18, 34, 0.45);
 }
 
-@keyframes floatGentle {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-4px); }
+/* Botão runa azul "?" (ref 05) */
+.cm-btn-blue {
+  background: #2f3f7c;
+  color: #ffffff;
+  border: 3px solid #161b38;
+  box-shadow:
+    inset 0 0 0 2px #8193d6,
+    inset 0 -5px 0 #24316a,
+    0 3px 0 rgba(20, 18, 34, 0.45);
 }
 
-.animate-float-gentle {
-  animation: floatGentle 3s ease-in-out infinite;
+/* Botão pergaminho */
+.cm-btn-cream {
+  background: var(--color-cm-parch-hi);
+  color: var(--color-cm-ink);
+  border: 3px solid var(--color-cm-frame);
+  box-shadow:
+    inset 0 -4px 0 var(--color-cm-parch-lo),
+    0 3px 0 rgba(20, 18, 34, 0.45);
 }
 
-@keyframes pulseGlowGold {
-  0%, 100% { box-shadow: 0 0 8px rgba(212, 163, 75, 0.3); }
-  50% { box-shadow: 0 0 18px rgba(212, 163, 75, 0.75); }
+.cm-btn:hover:not(:disabled),
+.cm-btn-dark:hover:not(:disabled),
+.cm-btn-blue:hover:not(:disabled),
+.cm-btn-cream:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
-.animate-glow-gold {
-  animation: pulseGlowGold 2s infinite;
+.cm-btn:active:not(:disabled),
+.cm-btn-dark:active:not(:disabled),
+.cm-btn-blue:active:not(:disabled),
+.cm-btn-cream:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.25), 0 1px 0 rgba(20, 18, 34, 0.45);
+}
+
+.cm-btn:disabled,
+.cm-btn-dark:disabled,
+.cm-btn-blue:disabled,
+.cm-btn-cream:disabled {
+  background: #5d5c62;
+  color: #2a2a2e;
+  box-shadow: inset 0 3px 0 #727177, inset 0 -4px 0 #48474c;
+  opacity: 0.8;
+}
+
+.cm-btn.is-off {
+  background: #8d8b93;
+  box-shadow: inset 0 3px 0 #b3b1b8, inset 0 -4px 0 #67666d, 0 3px 0 rgba(20, 18, 34, 0.45);
+}
+
+/* Fechar "X" quadradinho (refs 03 e 06) */
+.cm-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #2a2a2f;
+  border: 3px solid var(--color-cm-frame);
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 2px #5a5a62;
+}
+
+.cm-close:hover {
+  background: #3a3a40;
+}
+
+/* ---------------------------------------------------------------------
+   DESTAQUE DOURADO (ref 03)
+   --------------------------------------------------------------------- */
+.cm-gold-ring {
+  outline: 4px solid var(--color-cm-gold);
+  outline-offset: -1px;
+  box-shadow:
+    0 0 0 7px var(--color-cm-frame),
+    0 8px 0 rgba(20, 18, 34, 0.35) !important;
+  z-index: 10;
+}
+
+/* ---------------------------------------------------------------------
+   LINHA DE RECEITA (ref 03): pergaminho + listras coloridas
+   --------------------------------------------------------------------- */
+.cm-row {
+  --stripe: #9a6b4b;
+  position: relative;
+  border: 3px solid #b9a479;
+  border-radius: 2px;
+  background-color: var(--color-cm-parch-hi);
+}
+
+.cm-row-head {
+  position: relative;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 3px solid var(--stripe);
+  box-shadow: 0 3px 0 var(--color-cm-parch-hi), 0 5px 0 var(--stripe);
+}
+
+.cm-row-head::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -3px;
+  height: 3px;
+  background: var(--stripe);
+}
+
+/* ---------------------------------------------------------------------
+   GRADE DE CALENDÁRIO (ref 06): linhas azuis grossas sobre pergaminho
+   --------------------------------------------------------------------- */
+.cm-calendar {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  background: var(--color-cm-royal-line);
+  border-radius: 2px;
+}
+
+.cm-calendar-head {
+  background: var(--color-cm-royal-line);
+  height: 14px;
+}
+
+.cm-cal-cell {
+  position: relative;
+  background: var(--color-cm-parch);
+}
+
+.cm-cal-num {
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-cm-royal);
+  line-height: 1;
+  z-index: 2;
+}
+
+/* Carimbo vermelho circular (ref 06) */
+.cm-stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid var(--color-cm-stamp);
+  border-radius: 9999px;
+  color: var(--color-cm-stamp);
+  transform: rotate(-8deg);
+  opacity: 0.92;
+}
+
+/* Divisor inferior do calendário com medalhão (ref 06) */
+.cm-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cm-divider::before,
+.cm-divider::after {
+  content: '';
+  flex: 1;
+  height: 4px;
+  background: var(--color-cm-royal-line);
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------------
+   BALÃO DE FALA AMARELO (ref 03)
+   --------------------------------------------------------------------- */
+.cm-bubble {
+  position: relative;
+  background: var(--color-cm-bubble);
+  border: 3px solid #5b4322;
+  border-radius: 4px;
+  color: #2a1f0a;
+  box-shadow: 0 4px 0 rgba(20, 18, 34, 0.3);
+}
+
+.cm-bubble.tail-left::after,
+.cm-bubble.tail-bottom::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--color-cm-bubble);
+  border-left: 3px solid #5b4322;
+  border-bottom: 3px solid #5b4322;
+}
+
+.cm-bubble.tail-left::after {
+  left: -9px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.cm-bubble.tail-bottom::after {
+  left: 24px;
+  bottom: -9px;
+  transform: rotate(-45deg);
+}
+
+/* ---------------------------------------------------------------------
+   HUD SUPERIOR (ref 01)
+   --------------------------------------------------------------------- */
+.cm-hud-plate {
+  background: var(--color-cm-moss);
+  border: 3px solid var(--color-cm-frame);
+  box-shadow:
+    inset 0 3px 0 #535c50,
+    inset 0 -3px 0 var(--color-cm-moss-dark),
+    0 4px 0 rgba(20, 18, 34, 0.35);
+}
+
+.cm-tray {
+  position: relative;
+  background: #3a3a3f;
+  border: 3px solid var(--color-cm-frame);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 3px 0 #5c5c63,
+    inset 0 -3px 0 #26262a,
+    0 4px 0 rgba(20, 18, 34, 0.35);
+}
+
+.cm-rivet {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-cm-brass);
+  border: 2px solid var(--color-cm-frame);
+  box-shadow: inset 1px 1px 0 #f1d892;
+}
+
+.cm-tray-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  border-radius: 3px;
+  transition: transform 0.06s steps(2);
+}
+
+.cm-tray-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------------------------------------------------------------------
+   CARTA (refs 03 e 04)
+   --------------------------------------------------------------------- */
+.cm-card {
+  --stripe: #9a6b4b;
+  position: relative;
+  background-color: var(--color-cm-parch-hi);
+  border: 3px solid var(--color-cm-frame);
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 2px #e6d4a6,
+    0 4px 0 rgba(20, 18, 34, 0.35);
+  transition: transform 0.08s steps(2);
+}
+
+.cm-card-art {
+  position: relative;
+  border: 3px solid var(--color-cm-frame);
+  border-radius: 2px;
+  background: #1b1b1e;
+  overflow: hidden;
+}
+
+.cm-coin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-cm-gold);
+  border: 2px solid var(--color-cm-frame);
+  color: #2a1f0a;
+  font-weight: 700;
+  box-shadow: inset 2px 2px 0 var(--color-cm-gold-hi), inset -2px -2px 0 var(--color-cm-gold-dark);
+  line-height: 1;
+}
+
+.cm-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px 2px;
+  border: 2px solid var(--color-cm-frame);
+  border-radius: 2px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------------
+   MODAIS
+   --------------------------------------------------------------------- */
+.cm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background:
+    repeating-linear-gradient(0deg, rgba(14, 12, 24, 0.78) 0 2px, rgba(14, 12, 24, 0.72) 2px 4px);
+}
+
+}
+
+/* ---------------------------------------------------------------------
+   ANIMAÇÕES (sempre em steps() para sentir "pixel")
+   --------------------------------------------------------------------- */
+@keyframes cm-pop {
+  0% { transform: scale(0.92) translateY(8px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes cm-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cm-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes cm-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.25; }
+}
+
+@keyframes cm-hop {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-10px) scale(1.06); }
+}
+
+@keyframes cm-drift {
+  from { transform: translateX(-30vw); }
+  to { transform: translateX(130vw); }
+}
+
+@keyframes cm-sway {
+  0%, 100% { transform: rotate(-1.2deg); }
+  50% { transform: rotate(1.2deg); }
+}
+
+@layer components {
+.animate-fadeIn { animation: cm-fade 0.18s steps(4) both; }
+.cm-anim-pop { animation: cm-pop 0.22s steps(5) both; }
+.cm-anim-bob { animation: cm-bob 1.2s steps(4) infinite; }
+.cm-anim-blink { animation: cm-blink 1s steps(1) infinite; }
+.cm-anim-hop { animation: cm-hop 0.6s steps(6) infinite; }
+.cm-anim-sway { animation: cm-sway 4s ease-in-out infinite; transform-origin: top center; }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

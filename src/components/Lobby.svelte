@@ -1,8 +1,12 @@
 <script lang="ts">
   import type { Archetype } from '../lib/types';
   import { ARCHETYPES } from '../lib/engine/cards';
-  import { soundscape } from '../lib/audio/soundscape';
-  import AnthroArt from './AnthroArt.svelte';
+  import CharacterArt from './CharacterArt.svelte';
+  import PixelIcon from './ui/PixelIcon.svelte';
+  import Runes from './ui/Runes.svelte';
+  import CloudPuff from './ui/CloudPuff.svelte';
+  import Pennant from './ui/Pennant.svelte';
+  import { ARCH_STYLE } from '../lib/ui/theme';
 
   interface Props {
     selectedArchetype: Archetype;
@@ -28,15 +32,29 @@
     connectionError
   }: Props = $props();
 
+  const ORDER: Archetype[] = ['rajadas', 'raiz', 'zefiro', 'eter'];
+
   let inputJoinCode = $state('');
   let botArchetype = $state<Archetype>('raiz');
   let copiedLink = $state(false);
+  let mode = $state<'solo' | 'p2p'>('solo');
+
+  const meta = $derived(ARCHETYPES[selectedArchetype]);
+  const style = $derived(ARCH_STYLE[selectedArchetype]);
+  const botMeta = $derived(ARCHETYPES[botArchetype]);
+
+  function cycle(dir: number) {
+    const i = ORDER.indexOf(selectedArchetype);
+    onSelectArchetype(ORDER[(i + dir + ORDER.length) % ORDER.length]);
+  }
 
   function copyCode() {
     if (!hostRoomCode) return;
     navigator.clipboard.writeText(hostRoomCode);
     copiedLink = true;
-    setTimeout(() => { copiedLink = false; }, 2000);
+    setTimeout(() => {
+      copiedLink = false;
+    }, 2000);
   }
 
   function handleJoinSubmit(e: Event) {
@@ -45,204 +63,327 @@
       onJoinRoom(inputJoinCode.trim().toUpperCase());
     }
   }
+
+  const PASSIVE_LABEL: Record<Archetype, string> = {
+    rajadas: 'Ultrapassagem',
+    raiz: 'Pedágio',
+    zefiro: 'Fluxo Sereno',
+    eter: 'Mutação'
+  };
+
+  const IDEAL_ALA: Record<Archetype, string> = {
+    rajadas: 'Ala Nascente',
+    raiz: 'Ala Poente',
+    zefiro: 'Ordem crescente',
+    eter: 'Qualquer ala'
+  };
 </script>
 
-<div class="relative w-full max-w-5xl mx-auto flex flex-col items-center gap-5 py-4 px-3 select-none">
-  <!-- CABEÇALHO PRINCIPAL ESTILO CLOUD MEADOW (FRONTEIRA CELESTE) -->
-  <div class="text-center flex flex-col items-center gap-1.5">
-    <div class="inline-flex items-center gap-2 px-3.5 py-0.5 rounded-full bg-gradient-to-r from-[#442b15] via-[#8c6d44] to-[#442b15] border border-[#ffeaae] text-[#ffeaae] text-[11px] font-mono font-black tracking-widest uppercase shadow-lg">
-      <span>☁️ Cloud Meadow • Anthro Monster Edition</span>
+<div class="relative w-full max-w-5xl mx-auto flex flex-col items-stretch gap-5 py-4 px-3 select-none">
+  <!-- ============ TÍTULO EM CAIXA DE DIÁLOGO (ref 02) ============ -->
+  <section class="cm-dialog cm-parch overflow-hidden px-6 sm:px-24 pt-7 pb-8 cm-anim-pop">
+    <CloudPuff tone="sky" class="absolute -left-4 -top-6 w-36 h-24" flipY />
+    <CloudPuff tone="sky" flip flipY class="absolute -right-4 -top-6 w-36 h-24" />
+
+    <div class="absolute left-5 top-2 text-cm-ink-soft opacity-70">
+      <Runes text="~skyward~" height={11} />
+    </div>
+    <div class="absolute right-5 top-2 text-cm-ink-soft opacity-70 hidden sm:block">
+      <Runes text="beta 0.2" height={11} />
     </div>
 
-    <h1 class="text-3xl md:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-[#fff6db] via-[#f5d07c] to-[#996a1a] drop-shadow-md font-serif">
-      DIVIDE ET IMPERA
-    </h1>
-    <div class="text-xs md:text-sm font-black tracking-widest text-[#d4a34b] font-mono">
-      SKYWARD INVERSIONS <span class="text-stone-500">•</span> MONSTROS ANTHRO DA PRADARIA
+    <div class="relative z-10 flex flex-col items-center text-center gap-2">
+      <h1 class="cm-title text-4xl sm:text-6xl text-cm-ink drop-shadow-[3px_3px_0_#e2cf9c]">
+        DIVIDE ET IMPERA
+      </h1>
+      <div class="flex items-center gap-2 text-cm-royal font-bold text-sm sm:text-base">
+        <PixelIcon name="cloud" size={18} />
+        <span>Skyward Inversions</span>
+        <PixelIcon name="cloud" size={18} flip />
+      </div>
+      <p class="max-w-2xl text-[15px] sm:text-base text-cm-ink leading-snug mt-1">
+        Duelos táticos nas ilhas flutuantes movidos pelo algoritmo de contagem de inversões
+        <span class="text-cm-royal font-bold">O(n log n)</span>. Posicione suas criaturas nas alas e domine
+        o Grande Vórtice.
+      </p>
     </div>
-    <p class="max-w-lg text-xs text-[#c9b596] mt-0.5 font-sans leading-relaxed">
-      Duelos táticos inspirados no universo das ilhas flutuantes de Cloud Meadow, movidos pela execução cinética do algoritmo de contagem de inversões <span class="font-mono text-[#ffeaae] font-bold">O(n log n)</span>.
-    </p>
-  </div>
 
-  <!-- OS 4 GRIMÓRIOS DAS ESPÉCIES ANTHRO FURRY -->
-  <div class="w-full flex flex-col gap-2.5">
-    <div class="flex items-center justify-between border-b-2 border-[#5a3c26] pb-1.5">
-      <h2 class="text-sm md:text-base font-black text-[#ffeaae] font-serif flex items-center gap-2">
-        <span>🐾</span> Escolha seu Guardião Anthro
-      </h2>
-      <button
-        onclick={onOpenTutorial}
-        class="text-xs font-bold text-[#ffd369] hover:text-[#fff2c4] underline flex items-center gap-1 font-serif"
+    <!-- canto azul: manual -->
+    <button
+      onclick={onOpenTutorial}
+      class="absolute -left-2 -bottom-3 w-32 h-20 group z-20"
+      aria-label="Abrir manual"
+      title="Manual algorítmico"
+    >
+      <CloudPuff tone="blue" class="absolute inset-0 w-full h-full" />
+      <span class="absolute left-7 top-7 group-hover:-translate-y-0.5 transition-transform">
+        <PixelIcon name="scroll" size={30} />
+      </span>
+    </button>
+
+    <!-- canto terracota: avançar -->
+    <a
+      href="#cm-prep"
+      class="absolute -right-2 -bottom-3 w-32 h-20 group z-20"
+      aria-label="Ir para preparação"
+      title="Preparar duelo"
+    >
+      <CloudPuff tone="red" flip class="absolute inset-0 w-full h-full" />
+      <span
+        class="absolute right-7 top-6 w-10 h-10 rounded-full border-[3px] border-[#f2e5bf] flex items-center justify-center group-hover:-translate-y-0.5 transition-transform"
       >
-        <span>📖</span> Manual Algorítmico & Táticas
-      </button>
-    </div>
+        <PixelIcon name="next" size={20} />
+      </span>
+    </a>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-      {#each (['rajadas', 'raiz', 'zefiro', 'eter'] as Archetype[]) as arch}
-        {@const meta = ARCHETYPES[arch]}
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          onclick={() => onSelectArchetype(arch)}
-          class="cursor-pointer transition-all duration-200 rounded-3xl p-3.5 cloud-wood-panel border-2 flex flex-col justify-between text-left relative overflow-hidden group
-            {selectedArchetype === arch
-              ? 'border-[#ffeaae] ring-4 ring-[#ffd369]/70 scale-[1.02] shadow-2xl z-10'
-              : 'border-[#6e4e30] hover:border-[#d4a34b] hover:-translate-y-1'}"
-        >
-          <!-- Badge de Selecionado em Latão -->
-          {#if selectedArchetype === arch}
-            <div class="absolute top-2 right-2 px-2.5 py-0.5 rounded-full cloud-btn-brass text-[8.5px] uppercase tracking-wider z-20 shadow">
-              Ativo
-            </div>
-          {/if}
+    <span class="absolute left-1/2 -translate-x-1/2 bottom-2 text-cm-ink-soft font-bold cm-anim-blink">»</span>
+    <div class="cm-dialog-tab"></div>
+  </section>
 
-          <div>
-            <!-- Retrato Ilustrado do Personagem Anthro Furry do Deck -->
-            <div class="w-full h-36 rounded-2xl overflow-hidden border-2 border-[#8c6d44] mb-2.5 relative bg-[#170f09] group-hover:border-[#ffeaae] transition-colors shadow-inner">
-              <AnthroArt character={meta.artKey} class="w-full h-full" />
-              <span class="absolute bottom-1.5 left-2 px-2 py-0.5 rounded-md bg-stone-950/85 border border-[#b4925e] text-[#f7e3ba] text-[9px] font-black uppercase tracking-wider backdrop-blur-sm z-10">
-                {meta.species}
-              </span>
-            </div>
-
-            <!-- Título e Subtítulo -->
-            <div>
-              <h3 class="font-black text-xs sm:text-sm text-[#ffeaae] font-serif group-hover:text-amber-200 transition-colors leading-tight">
-                {meta.name}
-              </h3>
-              <div class="text-[9.5px] font-mono font-bold {meta.themeColor} mt-0.5">
-                {meta.subtitle}
-              </div>
-            </div>
-
-            <p class="text-[10px] text-[#c9b596] leading-relaxed my-1.5 line-clamp-3">
-              {meta.description}
-            </p>
-          </div>
-
-          <div class="pt-1.5 border-t border-[#5a3c26] flex items-center justify-between text-[10px] font-mono text-[#c9b596]">
-            <span>Pesos: <strong class="text-[#ffeaae]">{meta.weightRange}</strong></span>
-            <span class="text-xs">{arch === 'rajadas' ? '🐺' : arch === 'raiz' ? '🐮' : arch === 'zefiro' ? '🐱' : '🦊'}</span>
-          </div>
-        </div>
-      {/each}
-    </div>
-  </div>
-
-  <!-- MODOS DE JOGO: SOLO VS AUTÔMATO OU MULTIPLAYER P2P -->
-  <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
-    <!-- MODO SOLO (BOT HEURÍSTICO) -->
-    <div class="rounded-2xl p-5 cloud-wood-panel border-2 border-[#8c6d44] shadow-2xl flex flex-col justify-between gap-3">
-      <div class="flex flex-col gap-1.5">
-        <div class="flex items-center gap-2 text-[#ffeaae] font-black text-base font-serif">
-          <span class="text-xl">⚔️</span>
-          <h3>Duelo Solo vs Autômato Local</h3>
-        </div>
-        <p class="text-xs text-[#c9b596] leading-relaxed">
-          Enfrente uma inteligência heurística em TypeScript executada no próprio navegador. O bot calcula a melhor jogada simulando a árvore rasa de inversões com seu monstro anthro.
-        </p>
-
-        <!-- Seleção do Grimório do Bot -->
-        <div class="mt-1 flex flex-col gap-1">
-          <span class="text-[10px] font-mono uppercase tracking-wider text-[#d4a34b] font-bold">
-            Guardião Anthro do Oponente:
-          </span>
-          <div class="grid grid-cols-2 gap-1.5">
-            {#each (['rajadas', 'raiz', 'zefiro', 'eter'] as Archetype[]) as arch}
+  <!-- ============ JANELA DE PREPARAÇÃO (ref 05) ============ -->
+  <section id="cm-prep" class="flex flex-col items-center">
+    <div class="cm-window w-full cm-anim-pop">
+      <div class="cm-window-body is-dark p-3 sm:p-4 flex flex-col gap-4">
+        <!-- Faixa de retratos -->
+        <div class="flex items-center gap-2">
+          <button class="text-cm-cream/70 hover:text-white p-1" onclick={() => cycle(-1)} aria-label="Anterior">
+            <PixelIcon name="play" size={18} flip />
+          </button>
+          <div class="flex-1 grid grid-cols-4 gap-2 sm:gap-3">
+            {#each ORDER as arch}
+              {@const m = ARCHETYPES[arch]}
               <button
-                onclick={() => botArchetype = arch}
-                class="px-3 py-1.5 rounded-xl text-xs font-serif font-bold border transition-all text-left flex items-center justify-between
-                  {botArchetype === arch
-                    ? 'cloud-btn-brass text-stone-950 shadow'
-                    : 'cloud-btn-wood text-[#c9b596]'}"
+                onclick={() => onSelectArchetype(arch)}
+                class="cm-slot-light h-14 sm:h-16 overflow-hidden relative transition-transform
+                  {selectedArchetype === arch ? 'cm-gold-ring' : 'hover:-translate-y-0.5 opacity-80 hover:opacity-100'}"
+                title={m.name}
               >
-                <span>{ARCHETYPES[arch].name.split(' ')[0]}</span>
-                <span class="text-xs">{arch === 'rajadas' ? '🐺' : arch === 'raiz' ? '🐮' : arch === 'zefiro' ? '🐱' : '🦊'}</span>
+                <CharacterArt character={m.artKey} class="w-full h-full" />
+                <span
+                  class="absolute bottom-0 inset-x-0 h-1"
+                  style="background: {ARCH_STYLE[arch].stripe}"
+                ></span>
               </button>
             {/each}
           </div>
+          <button class="text-cm-cream/70 hover:text-white p-1" onclick={() => cycle(1)} aria-label="Próximo">
+            <PixelIcon name="play" size={18} />
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+          <!-- ======= COLUNA ESQUERDA: GUARDIÃO ======= -->
+          <div class="flex flex-col gap-2.5">
+            <div class="text-[13px] text-cm-tan font-bold flex items-center gap-1.5">
+              <PixelIcon name="paw" size={14} /> Seu Guardião
+            </div>
+
+            <!-- Retrato principal -->
+            <div class="relative cm-slot h-52 sm:h-60 overflow-hidden" style="border-color: #c9b98c">
+              <div
+                class="absolute inset-0"
+                style="background: radial-gradient(ellipse 70% 55% at 50% 100%, #3a4d8a 0 40%, #26305a 41% 70%, #1b1b1e 71%)"
+              ></div>
+              {#key selectedArchetype}
+                <div class="absolute inset-3 cm-anim-pop">
+                  <CharacterArt character={meta.artKey} class="w-full h-full" />
+                </div>
+              {/key}
+              <span class="absolute -top-[3px] -left-[3px] w-9 h-9 bg-cm-slate border-[3px] border-[#c9b98c] flex items-center justify-center">
+                <PixelIcon name={style.icon} size={18} />
+              </span>
+            </div>
+
+            <!-- Placa de nome -->
+            <div class="cm-slot px-3 py-2">
+              <div class="font-bold text-[15px] text-white leading-tight">{meta.name}</div>
+              <div class="text-xs text-cm-tan mt-0.5">{meta.subtitle}</div>
+            </div>
+
+            <!-- Barras -->
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center gap-2">
+                <span class="w-14 text-xs text-cm-tan">Vigor</span>
+                <div class="cm-bar flex-1"><div class="cm-bar-fill is-hp" style="width: {style.vigor}%"></div></div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-14 text-xs text-cm-tan">Ímpeto</span>
+                <div class="cm-bar flex-1"><div class="cm-bar-fill is-mp" style="width: {style.impeto}%"></div></div>
+              </div>
+            </div>
+
+            <!-- Caixas de estatística -->
+            <div class="grid grid-cols-2 gap-1.5 text-[13px]">
+              <div class="cm-stat">
+                <span class="cm-stat-icon" style="background:#f08a3c"><PixelIcon name="coin" size={14} /></span>
+                <span class="truncate">Pesos {meta.weightRange}</span>
+              </div>
+              <div class="cm-stat">
+                <span class="cm-stat-icon" style="background:#45c552"><PixelIcon name="heart" size={14} /></span>
+                <span class="truncate">{PASSIVE_LABEL[selectedArchetype]}</span>
+              </div>
+              <div class="cm-stat">
+                <span class="cm-stat-icon" style="background:#9a6be0"><PixelIcon name="eye" size={14} /></span>
+                <span class="truncate">{meta.species}</span>
+              </div>
+              <div class="cm-stat">
+                <span class="cm-stat-icon" style="background:#4f8fe0"><PixelIcon name="bolt" size={14} /></span>
+                <span class="truncate">{IDEAL_ALA[selectedArchetype]}</span>
+              </div>
+            </div>
+
+            <p class="text-[13px] text-cm-cream/85 leading-snug">{meta.description}</p>
+
+            <!-- Fórmulas ocultas "?" -->
+            <div class="flex items-center gap-2">
+              {#each [0, 1, 2, 3] as i}
+                <span class="cm-btn-blue w-11 h-11 text-lg cursor-help" title="Fórmula alquímica revelada durante o duelo">?</span>
+              {/each}
+              <button
+                onclick={onOpenTutorial}
+                class="ml-auto text-xs text-cm-tan hover:text-white underline underline-offset-4 flex items-center gap-1"
+              >
+                <PixelIcon name="scroll" size={14} /> Manual & táticas
+              </button>
+            </div>
+          </div>
+
+          <!-- ======= COLUNA DIREITA: MODO ======= -->
+          <div class="flex flex-col gap-3 md:border-l-[3px] md:border-[#3c3c42] md:pl-4">
+            {#if mode === 'solo'}
+              <div class="text-[13px] text-cm-tan font-bold flex items-center gap-1.5">
+                <PixelIcon name="sword" size={14} /> Oponente Autômato
+              </div>
+
+              <div class="grid grid-cols-4 gap-2">
+                {#each ORDER as arch}
+                  <button
+                    onclick={() => (botArchetype = arch)}
+                    class="cm-slot-light h-12 overflow-hidden relative
+                      {botArchetype === arch ? 'cm-gold-ring' : 'opacity-70 hover:opacity-100'}"
+                    title={ARCHETYPES[arch].name}
+                  >
+                    <CharacterArt character={ARCHETYPES[arch].artKey} class="w-full h-full" />
+                  </button>
+                {/each}
+              </div>
+
+              <div class="relative flex items-start justify-between gap-2 min-h-72">
+                <div class="flex flex-col items-start gap-1 pt-4 z-10">
+                  <PixelIcon name="flag" size={34} />
+                  <span class="text-2xl font-bold text-[#bfbfc6] cm-outline-thin mt-1">Rodada</span>
+                  <span class="text-2xl font-bold text-[#bfbfc6] cm-outline-thin -mt-1 pl-6">1</span>
+                  <span class="text-7xl font-bold text-[#d4d4da] cm-outline italic -skew-x-12 leading-none mt-1">
+                    VS
+                  </span>
+                  <div class="mt-3 cm-bubble tail-bottom px-3 py-2 text-[13px] max-w-44 leading-snug">
+                    {botMeta.quote}
+                  </div>
+                </div>
+
+                {#key botArchetype}
+                  <Pennant emblem={ARCH_STYLE[botArchetype].emblem} class="w-36 sm:w-44 h-auto shrink-0 -mt-1" />
+                {/key}
+              </div>
+
+              <div class="text-center text-xs text-cm-tan -mt-1">
+                Enfrentando: <span class="text-white font-bold">{botMeta.name}</span>
+              </div>
+
+              <button
+                onclick={() => onStartSolo(botArchetype)}
+                class="cm-btn w-full py-3 text-base"
+              >
+                <PixelIcon name="sword" size={18} /> Decolar em Voo Solo
+              </button>
+            {:else}
+              <div class="text-[13px] text-cm-tan font-bold flex items-center gap-1.5">
+                <PixelIcon name="net" size={14} /> Multiplayer P2P (WebRTC)
+              </div>
+
+              <div class="cm-dialog cm-parch px-4 py-4 flex flex-col gap-3">
+                <p class="text-[14px] leading-snug">
+                  Duelo direto entre navegadores. O anfitrião gera um código de 5 letras e o rival se conecta em
+                  tempo real — sem servidor.
+                </p>
+
+                {#if hostRoomCode}
+                  <div class="flex flex-col items-center gap-2 text-center">
+                    <span class="text-[13px] font-bold">Envie este código ao seu adversário:</span>
+                    <div class="cm-royal-banner border-[3px] border-cm-frame px-5 py-2 rounded-[3px]">
+                      <span class="relative z-10 text-3xl font-bold tracking-[0.3em] text-white cm-outline-thin">
+                        {hostRoomCode}
+                      </span>
+                    </div>
+                    <button onclick={copyCode} class="cm-btn px-4 py-2 text-sm">
+                      <PixelIcon name="scroll" size={14} />
+                      {copiedLink ? 'Copiado!' : 'Copiar código'}
+                    </button>
+                    <div class="flex items-center gap-2 text-[13px] text-cm-ink-soft">
+                      <span class="w-2.5 h-2.5 bg-cm-hp border-2 border-cm-frame cm-anim-blink"></span>
+                      Aguardando oponente atracar na doca aérea…
+                    </div>
+                  </div>
+                {:else}
+                  <button onclick={onHostRoom} disabled={isConnectingP2P} class="cm-btn w-full py-2.5 text-sm">
+                    <PixelIcon name="flag" size={16} />
+                    {isConnectingP2P ? 'Ancorando sala…' : 'Criar nova sala'}
+                  </button>
+
+                  <div class="cm-divider text-cm-royal text-xs font-bold">ou</div>
+
+                  <form onsubmit={handleJoinSubmit} class="flex items-stretch gap-2">
+                    <input
+                      type="text"
+                      maxlength="5"
+                      placeholder="SKYWD"
+                      bind:value={inputJoinCode}
+                      class="flex-1 min-w-0 uppercase tracking-[0.3em] text-center px-3 py-2 bg-cm-parch-hi border-[3px] border-cm-frame rounded-[3px] text-cm-ink placeholder:text-cm-tan-dark text-lg font-bold focus:outline-4 focus:outline-cm-gold"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isConnectingP2P || inputJoinCode.trim().length < 4}
+                      class="cm-btn-dark px-4 text-sm"
+                    >
+                      Conectar
+                    </button>
+                  </form>
+                {/if}
+
+                {#if connectionError}
+                  <div class="cm-bubble px-3 py-2 text-[13px] !bg-[#f6b8a8] !border-cm-terra">
+                    {connectionError}
+                  </div>
+                {/if}
+              </div>
+
+              <div class="flex items-end justify-center gap-4 mt-auto">
+                <Pennant emblem={style.emblem} class="w-24 h-auto" />
+                <span class="text-5xl font-bold text-[#d4d4da] cm-outline italic -skew-x-12 pb-12">VS</span>
+                <Pennant emblem="star" tone="red" class="w-24 h-auto" />
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
+    </div>
 
+    <!-- Aba inferior com botões (ref 05) -->
+    <div
+      class="-mt-[5px] z-10 bg-cm-tan border-[5px] border-t-0 border-cm-frame rounded-b-[10px] px-3 pt-3 pb-3 flex gap-3 shadow-[inset_0_-3px_0_#a8925f,0_6px_0_rgba(20,18,34,.35)]"
+    >
       <button
-        onclick={() => onStartSolo(botArchetype)}
-        class="w-full py-3.5 rounded-xl cloud-btn-brass font-black text-xs uppercase tracking-wider shadow-xl active:scale-98"
+        onclick={() => (mode = 'solo')}
+        class="{mode === 'solo' ? 'cm-btn' : 'cm-btn-dark'} w-36 sm:w-48 py-3 text-sm sm:text-base"
       >
-        Decolar em Voo Solo ⚔️
+        <PixelIcon name="sword" size={16} /> Duelo Solo
+      </button>
+      <button
+        onclick={() => (mode = 'p2p')}
+        class="{mode === 'p2p' ? 'cm-btn' : 'cm-btn-dark'} w-36 sm:w-48 py-3 text-sm sm:text-base"
+      >
+        <PixelIcon name="net" size={16} /> Multiplayer
       </button>
     </div>
-
-    <!-- MODO MULTIPLAYER P2P (WEBRTC ZERO BACKEND) -->
-    <div class="rounded-2xl p-5 cloud-wood-panel border-2 border-[#8c6d44] shadow-2xl flex flex-col justify-between gap-3">
-      <div class="flex flex-col gap-1.5">
-        <div class="flex items-center gap-2 text-sky-300 font-black text-base font-serif">
-          <span class="text-xl">🌐</span>
-          <h3>Multiplayer P2P (WebRTC Zepelim)</h3>
-        </div>
-        <p class="text-xs text-[#c9b596] leading-relaxed">
-          Conexão direta entre navegadores via PeerJS DataConnection. O Jogador 1 gera um código de 5 letras e o Jogador 2 conecta em tempo real sem servidor dedicado.
-        </p>
-
-        <!-- Área de Código P2P -->
-        {#if hostRoomCode}
-          <div class="mt-1 p-3 rounded-xl cloud-parchment border-2 border-[#8c6d44] flex flex-col items-center gap-1.5 text-center animate-fadeIn shadow-inner">
-            <span class="text-xs text-[#5a3810] font-bold">Transmita este código ao seu adversário:</span>
-            <div class="text-2xl font-mono font-black tracking-widest text-[#2e1d11] bg-[#ffe7a3] px-5 py-1 rounded-xl border-2 border-[#b0966d] shadow-inner">
-              {hostRoomCode}
-            </div>
-            <button
-              onclick={copyCode}
-              class="px-3.5 py-1 rounded-xl cloud-btn-brass text-xs active:scale-95 flex items-center gap-1.5"
-            >
-              <span>{copiedLink ? '✓ Copiado!' : '📋 Copiar Código da Sala'}</span>
-            </button>
-            <div class="flex items-center gap-2 text-[10px] text-[#785b3b] animate-pulse mt-0.5">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-              <span>Aguardando oponente se conectar à doca aérea...</span>
-            </div>
-          </div>
-        {:else}
-          <div class="flex flex-col gap-2 mt-1">
-            <button
-              onclick={onHostRoom}
-              disabled={isConnectingP2P}
-              class="w-full py-3 rounded-xl cloud-btn-brass text-xs uppercase tracking-wider shadow-lg active:scale-98"
-            >
-              {isConnectingP2P ? 'Ancorando Sala P2P...' : 'Criar Nova Sala (Código 5 Letras)'}
-            </button>
-
-            <!-- Entrar com Código Existente -->
-            <form onsubmit={handleJoinSubmit} class="flex items-center gap-2">
-              <input
-                type="text"
-                maxlength="5"
-                placeholder="Ex: SKYWD"
-                bind:value={inputJoinCode}
-                class="flex-1 uppercase font-mono tracking-widest text-center px-3 py-2.5 rounded-xl bg-[#120b07] border-2 border-[#785328] text-[#ffeaae] placeholder:text-[#5a3810] text-sm focus:outline-none focus:border-[#ffd369]"
-              />
-              <button
-                type="submit"
-                disabled={isConnectingP2P || inputJoinCode.trim().length < 4}
-                class="px-4 py-2.5 rounded-xl cloud-btn-wood disabled:opacity-50 text-xs uppercase tracking-wider font-bold active:scale-98"
-              >
-                Conectar
-              </button>
-            </form>
-          </div>
-        {/if}
-
-        {#if connectionError}
-          <div class="text-xs text-rose-300 bg-rose-950/80 p-2.5 rounded-xl border border-rose-800 text-center">
-            {connectionError}
-          </div>
-        {/if}
-      </div>
-
-      <div class="text-[10px] text-[#785328] text-center font-mono font-bold">
-        WebRTC DataChannel 1v1 • Zero Infraestrutura & Zero Backend
-      </div>
-    </div>
-  </div>
+  </section>
 </div>

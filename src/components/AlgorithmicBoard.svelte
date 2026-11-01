@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Card, AlgorithmStep } from '../lib/types';
   import CardView from './CardView.svelte';
+  import PixelIcon from './ui/PixelIcon.svelte';
 
   interface Props {
     step?: AlgorithmStep;
@@ -50,168 +51,109 @@
     if (!step?.activePointers?.activePair) return false;
     return step.activePointers.activePair.includes(idx);
   }
+
+  const NICHOS = [
+    { id: 0, label: 'Nicho 0', ala: 'Ala Poente', slots: [0, 1], tone: '#4459ad' },
+    { id: 1, label: 'Nicho 1', ala: 'Ala Poente', slots: [2, 3], tone: '#4459ad' },
+    { id: 2, label: 'Nicho 2', ala: 'Ala Nascente', slots: [4, 5], tone: '#c2622d' },
+    { id: 3, label: 'Nicho 3', ala: 'Ala Nascente', slots: [6, 7], tone: '#c2622d' }
+  ];
 </script>
 
-<div class="w-full max-w-5xl mx-auto py-1 flex flex-col items-center select-none gap-2">
-  <!-- ARQUITETURA CELESTE: ÁRVORE DE ESTRATOS EM LATÃO & PERGAMINHO -->
-  <div class="w-full flex items-center justify-between px-5 py-2 rounded-2xl cloud-wood-panel border-2 border-[#8c6d44] text-xs font-mono text-[#ede0c8] shadow-lg">
+<div class="w-full max-w-5xl mx-auto py-1 flex flex-col items-center select-none gap-3">
+  <!-- CABEÇALHO DO ARQUIPÉLAGO: ÁRVORE DE ESTRATOS EM ESTILO HUD CLOUD MEADOW -->
+  <div class="w-full flex items-center justify-between px-4 py-2.5 bg-cm-frame rounded-[6px] text-white shadow-[0_4px_0_rgba(20,18,34,.35)]">
     <!-- Ala Poente [0..3] -->
-    <div class="flex items-center gap-2 transition-all {isDividePhase || isAlaMergePhase ? 'text-[#ffeaae] font-black' : 'opacity-60'}">
-      <span class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
-      <span class="font-serif tracking-wide text-xs sm:text-sm text-sky-200">Ala Poente [Slots 0..3]</span>
+    <div class="flex items-center gap-2 transition-all {isDividePhase || isAlaMergePhase ? 'text-[#8fc3ee]' : 'opacity-60'}">
+      <span class="w-2.5 h-2.5 rounded-full bg-[#4459ad] border border-white cm-anim-blink"></span>
+      <span class="font-bold text-xs sm:text-sm tracking-wide">Ala Poente [Slots 0..3]</span>
     </div>
 
-    <!-- Placa Central: Fase do Algoritmo Divide and Conquer -->
+    <!-- Placa Central: Fase do Algoritmo Divide and Conquer (ref 06 e ref 03) -->
     <div class="flex items-center gap-2">
-      <span class="px-3.5 py-0.5 rounded-full bg-gradient-to-r from-[#5a3810] via-[#9e6a17] to-[#5a3810] border border-[#ffeaae] text-[#ffeaae] font-serif font-black text-xs uppercase tracking-wider shadow">
+      <span class="px-4 py-1.5 rounded-[3px] bg-cm-royal border-2 border-cm-frame text-cm-cream font-bold text-xs sm:text-sm tracking-wider shadow-[inset_0_2px_0_#5a6fc2]">
         {#if isDividePhase}
-          Dividir: 4 Nichos T(2)
+          <span class="inline-flex items-center gap-1.5">
+            <PixelIcon name="swap" size={14} /> Dividir: 4 Nichos T(2)
+          </span>
         {:else if isAlaMergePhase}
-          Merge Local: r_A & r_B
+          <span class="inline-flex items-center gap-1.5">
+            <PixelIcon name="swirl" size={14} /> Merge Local: r_A & r_B
+          </span>
         {:else}
-          🌪️ O Grande Vórtice O(n)
+          <span class="inline-flex items-center gap-1.5 text-cm-gold">
+            <PixelIcon name="bolt" size={14} /> O Grande Vórtice O(n)
+          </span>
         {/if}
       </span>
     </div>
 
     <!-- Ala Nascente [4..7] -->
-    <div class="flex items-center gap-2 transition-all {isDividePhase || isAlaMergePhase ? 'text-[#ffeaae] font-black' : 'opacity-60'}">
-      <span class="font-serif tracking-wide text-xs sm:text-sm text-amber-200">Ala Nascente [Slots 4..7]</span>
-      <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+    <div class="flex items-center gap-2 transition-all {isDividePhase || isAlaMergePhase ? 'text-[#f9d57c]' : 'opacity-60'}">
+      <span class="font-bold text-xs sm:text-sm tracking-wide">Ala Nascente [Slots 4..7]</span>
+      <span class="w-2.5 h-2.5 rounded-full bg-[#c2622d] border border-white cm-anim-blink"></span>
     </div>
   </div>
 
-  <!-- PLACA DE IMPACTO CINÉTICO DO PASSO (EVENT LOG) -->
+  <!-- BALÃO DE IMPACTO CINÉTICO DO PASSO (ESTILO DIÁLOGO / RECEITA CLOUD MEADOW ref 02/03) -->
   {#if step?.eventPayload}
-    <div class="w-full px-4 py-2 rounded-xl cloud-wood-panel border-2 shadow-lg text-xs font-medium flex items-center justify-between gap-3 animate-fadeIn
-      {step.type === 'vortex_burst_inversion'
-        ? 'border-amber-400 bg-gradient-to-r from-[#44220b] to-[#201006] text-[#ffeaae] ring-2 ring-amber-400/60'
-        : step.type === 'nicho_swap'
-        ? 'border-purple-400 bg-gradient-to-r from-[#31173d] to-[#1a0c20] text-purple-100'
-        : 'border-[#8c6d44] text-[#ede0c8]'}">
-      <div class="flex items-center gap-2.5">
-        <span class="text-lg">
-          {step.type === 'vortex_burst_inversion' ? '⚡' : step.type === 'nicho_swap' ? '🔀' : '🍃'}
+    <div class="w-full cm-bubble tail-left px-4 py-2.5 flex items-center justify-between gap-3 cm-anim-pop
+      {step.type === 'vortex_burst_inversion' ? '!bg-[#fff0a6] !border-cm-gold-dark' : ''}">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="shrink-0 p-1 bg-cm-frame rounded-[2px] text-white">
+          <PixelIcon
+            name={step.type === 'vortex_burst_inversion' ? 'bolt' : step.type === 'nicho_swap' ? 'swap' : 'leaf'}
+            size={16}
+          />
         </span>
-        <span class="font-sans font-semibold tracking-wide text-xs sm:text-sm">{step.eventPayload.logText}</span>
+        <span class="text-xs sm:text-sm font-bold text-cm-ink leading-tight truncate">
+          {step.eventPayload.logText}
+        </span>
       </div>
 
       {#if step.eventPayload.kInversions}
-        <div class="px-2.5 py-0.5 rounded-lg cloud-btn-brass text-xs uppercase tracking-wider animate-bounce flex-shrink-0">
-          +{step.eventPayload.kInversions} Inversões!
+        <div class="cm-btn px-3 py-1 text-xs shrink-0 cm-anim-hop">
+          <PixelIcon name="bolt" size={13} /> +{step.eventPayload.kInversions} Inversões!
         </div>
       {/if}
     </div>
   {/if}
 
-  <!-- TABULEIRO DOS 4 NICHOS -->
-  <div class="w-full grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-    <!-- Nicho 0: Slots 0 e 1 -->
-    <div class="p-2 rounded-2xl cloud-wood-panel border-2 transition-all duration-200 flex flex-col items-center
-      {isDividePhase ? 'border-sky-500/80 shadow-sky-900/40 ring-1 ring-sky-400/50' : 'border-[#6e4e30]'}">
-      <div class="w-full text-[9px] uppercase font-mono tracking-wider text-sky-300 font-bold mb-1.5 flex justify-between border-b border-[#5a3c26] pb-0.5">
-        <span>Nicho 0 (Poente)</span>
-        <span class="text-[#c9b596]">[0 - 1]</span>
-      </div>
-      <div class="flex justify-center gap-1.5 w-full">
-        {#each [0, 1] as slotIdx}
-          {#if cards[slotIdx]}
-            <CardView
-              card={cards[slotIdx]!}
-              compact={true}
-              isAurora={isSlotAurora(slotIdx)}
-              isOcaso={isSlotOcaso(slotIdx)}
-              isSwapping={isSlotSwapping(slotIdx)}
-              selected={isSlotActivePair(slotIdx)}
-            />
-          {:else}
-            <div class="w-20 sm:w-24 h-32 sm:h-36 rounded-xl border-2 border-dashed border-[#5a3c26] bg-[#1a110a]/60 flex items-center justify-center text-[#785328] text-xs font-mono">
-              #{slotIdx}
-            </div>
-          {/if}
-        {/each}
-      </div>
-    </div>
+  <!-- TABULEIRO DOS 4 NICHOS (JANELAS COM PERGAMINHO E MOLDURA ESCURA ref 03 e 05) -->
+  <div class="w-full grid grid-cols-2 lg:grid-cols-4 gap-3">
+    {#each NICHOS as nicho}
+      <div class="cm-window !p-2 flex flex-col items-center gap-1.5 transition-all
+        {isDividePhase ? 'cm-gold-ring' : ''}">
+        <!-- Cabeçalho do Nicho -->
+        <div class="w-full flex items-center justify-between px-1.5 py-0.5 border-b-2 border-cm-tan-dark text-[11px] font-bold">
+          <span class="flex items-center gap-1" style="color: {nicho.tone}">
+            <PixelIcon name="shield" size={11} />
+            {nicho.label}
+          </span>
+          <span class="text-cm-ink-soft font-mono">[{nicho.slots[0]}-{nicho.slots[1]}]</span>
+        </div>
 
-    <!-- Nicho 1: Slots 2 e 3 -->
-    <div class="p-2 rounded-2xl cloud-wood-panel border-2 transition-all duration-200 flex flex-col items-center
-      {isDividePhase ? 'border-sky-500/80 shadow-sky-900/40 ring-1 ring-sky-400/50' : 'border-[#6e4e30]'}">
-      <div class="w-full text-[9px] uppercase font-mono tracking-wider text-sky-300 font-bold mb-1.5 flex justify-between border-b border-[#5a3c26] pb-0.5">
-        <span>Nicho 1 (Poente)</span>
-        <span class="text-[#c9b596]">[2 - 3]</span>
+        <!-- Slots de Cartas -->
+        <div class="flex justify-center items-center gap-1.5 w-full py-1">
+          {#each nicho.slots as slotIdx}
+            {#if cards[slotIdx]}
+              <CardView
+                card={cards[slotIdx]!}
+                compact={true}
+                isAurora={isSlotAurora(slotIdx)}
+                isOcaso={isSlotOcaso(slotIdx)}
+                isSwapping={isSlotSwapping(slotIdx)}
+                selected={isSlotActivePair(slotIdx)}
+              />
+            {:else}
+              <div class="cm-slot w-20 sm:w-24 h-32 sm:h-36 flex flex-col items-center justify-center gap-1 text-cm-tan/70">
+                <PixelIcon name="cloud" size={18} />
+                <span class="text-xs font-bold font-mono">#{slotIdx}</span>
+              </div>
+            {/if}
+          {/each}
+        </div>
       </div>
-      <div class="flex justify-center gap-1.5 w-full">
-        {#each [2, 3] as slotIdx}
-          {#if cards[slotIdx]}
-            <CardView
-              card={cards[slotIdx]!}
-              compact={true}
-              isAurora={isSlotAurora(slotIdx)}
-              isOcaso={isSlotOcaso(slotIdx)}
-              isSwapping={isSlotSwapping(slotIdx)}
-              selected={isSlotActivePair(slotIdx)}
-            />
-          {:else}
-            <div class="w-20 sm:w-24 h-32 sm:h-36 rounded-xl border-2 border-dashed border-[#5a3c26] bg-[#1a110a]/60 flex items-center justify-center text-[#785328] text-xs font-mono">
-              #{slotIdx}
-            </div>
-          {/if}
-        {/each}
-      </div>
-    </div>
-
-    <!-- Nicho 2: Slots 4 e 5 -->
-    <div class="p-2 rounded-2xl cloud-wood-panel border-2 transition-all duration-200 flex flex-col items-center
-      {isDividePhase ? 'border-amber-500/80 shadow-amber-900/40 ring-1 ring-amber-400/50' : 'border-[#6e4e30]'}">
-      <div class="w-full text-[9px] uppercase font-mono tracking-wider text-amber-300 font-bold mb-1.5 flex justify-between border-b border-[#5a3c26] pb-0.5">
-        <span>Nicho 2 (Nascente)</span>
-        <span class="text-[#c9b596]">[4 - 5]</span>
-      </div>
-      <div class="flex justify-center gap-1.5 w-full">
-        {#each [4, 5] as slotIdx}
-          {#if cards[slotIdx]}
-            <CardView
-              card={cards[slotIdx]!}
-              compact={true}
-              isAurora={isSlotAurora(slotIdx)}
-              isOcaso={isSlotOcaso(slotIdx)}
-              isSwapping={isSlotSwapping(slotIdx)}
-              selected={isSlotActivePair(slotIdx)}
-            />
-          {:else}
-            <div class="w-20 sm:w-24 h-32 sm:h-36 rounded-xl border-2 border-dashed border-[#5a3c26] bg-[#1a110a]/60 flex items-center justify-center text-[#785328] text-xs font-mono">
-              #{slotIdx}
-            </div>
-          {/if}
-        {/each}
-      </div>
-    </div>
-
-    <!-- Nicho 3: Slots 6 e 7 -->
-    <div class="p-2 rounded-2xl cloud-wood-panel border-2 transition-all duration-200 flex flex-col items-center
-      {isDividePhase ? 'border-amber-500/80 shadow-amber-900/40 ring-1 ring-amber-400/50' : 'border-[#6e4e30]'}">
-      <div class="w-full text-[9px] uppercase font-mono tracking-wider text-amber-300 font-bold mb-1.5 flex justify-between border-b border-[#5a3c26] pb-0.5">
-        <span>Nicho 3 (Nascente)</span>
-        <span class="text-[#c9b596]">[6 - 7]</span>
-      </div>
-      <div class="flex justify-center gap-1.5 w-full">
-        {#each [6, 7] as slotIdx}
-          {#if cards[slotIdx]}
-            <CardView
-              card={cards[slotIdx]!}
-              compact={true}
-              isAurora={isSlotAurora(slotIdx)}
-              isOcaso={isSlotOcaso(slotIdx)}
-              isSwapping={isSlotSwapping(slotIdx)}
-              selected={isSlotActivePair(slotIdx)}
-            />
-          {:else}
-            <div class="w-20 sm:w-24 h-32 sm:h-36 rounded-xl border-2 border-dashed border-[#5a3c26] bg-[#1a110a]/60 flex items-center justify-center text-[#785328] text-xs font-mono">
-              #{slotIdx}
-            </div>
-          {/if}
-        {/each}
-      </div>
-    </div>
+    {/each}
   </div>
 </div>
