@@ -300,37 +300,37 @@
 
     const nextStep = steps[currentStepIndex + 1];
 
-    if (nextStep.type === 'alpha_pause' && !player1.hasPlayedAlphaSpell && player1.spells.length > 0) {
-      pauseAutoPlay();
+    if (nextStep.type === 'alpha_pause' || nextStep.type === 'beta_pause') {
+      const windowType = nextStep.type === 'alpha_pause' ? 'alpha' : 'beta';
       currentStepIndex++;
-      currentInterventionWindow = 'alpha';
-      phase = 'alpha_window';
-      return;
-    }
 
-    if (nextStep.type === 'beta_pause' && !player1.hasPlayedBetaSpell && player1.spells.length > 0) {
-      pauseAutoPlay();
-      currentStepIndex++;
-      currentInterventionWindow = 'beta';
-      phase = 'beta_window';
+      if (canUserCast(windowType)) {
+        pauseAutoPlay();
+        currentInterventionWindow = windowType;
+        phase = windowType === 'alpha' ? 'alpha_window' : 'beta_window';
+      } else {
+        botIntervene(windowType);
+      }
       return;
     }
 
     currentStepIndex++;
   }
 
-  function handleOpenInterventionManually() {
-    pauseAutoPlay();
-    const userSpells = userPlayerId === 'player1' ? player1.spells : player2.spells;
-    if (userSpells.length === 0) return;
+  function canUserCast(windowType: 'alpha' | 'beta'): boolean {
+    const user = userPlayerId === 'player1' ? player1 : player2;
+    const alreadyPlayed = windowType === 'alpha' ? user.hasPlayedAlphaSpell : user.hasPlayedBetaSpell;
+    return user.spells.length > 0 && !alreadyPlayed;
+  }
 
-    if (currentStep?.type === 'beta_pause' || currentStepIndex >= 18) {
-      currentInterventionWindow = 'beta';
-      phase = 'beta_window';
-    } else {
-      currentInterventionWindow = 'alpha';
-      phase = 'alpha_window';
-    }
+  function handleOpenInterventionManually() {
+    if (currentStep?.type !== 'alpha_pause' && currentStep?.type !== 'beta_pause') return;
+    const windowType = currentStep.type === 'alpha_pause' ? 'alpha' : 'beta';
+    if (!canUserCast(windowType)) return;
+
+    pauseAutoPlay();
+    currentInterventionWindow = windowType;
+    phase = windowType === 'alpha' ? 'alpha_window' : 'beta_window';
   }
 
   // --- JANELAS DE INTERVENÇÃO DE MAGIAS ---
@@ -339,8 +339,12 @@
    * Dano, cura e inversões acumulados vêm do passo atual (e não do total da simulação
    * anterior, que já incluía passos futuros descartados).
    */
-  function resumeAfterIntervention(board: (Card | null)[], title: string, logEntries: string[]) {
-    const winType = currentInterventionWindow || 'alpha';
+  function resumeAfterIntervention(
+    winType: 'alpha' | 'beta',
+    board: (Card | null)[],
+    title: string,
+    logEntries: string[]
+  ) {
     const base = currentStep;
     const totals = base?.totals ?? { damageP1: 0, damageP2: 0, healP1: 0, healP2: 0 };
 
@@ -396,38 +400,69 @@
     let currentBoard = applySpell(currentStep?.boardState || slots, spell, targetSlot);
     const logEntries = [`[Fórmula Alquímica] Você conjurou ${spell.name} na Ilha #${targetSlot}!`];
 
-    if (gameMode === 'solo' && player2.spells.length > 0) {
-      const botDecision = calculateSpellDecision(
-        player2.spells,
-        currentBoard,
-        player2.deckArchetype,
-        currentInterventionWindow || 'alpha'
-      );
-      if (botDecision && botDecision.shouldCast && botDecision.spellId && botDecision.targetSlot !== undefined && botDecision.targetSlot !== -1) {
-        const spellToCast = player2.spells.find(s => s.id === botDecision.spellId);
-        if (spellToCast) {
-          player2.spells = player2.spells.filter(s => s.id !== spellToCast.id);
-          currentBoard = applySpell(currentBoard, spellToCast, botDecision.targetSlot);
-          logEntries.push(`[Fórmula Rival] Autômato conjurou ${spellToCast.name} na Ilha #${botDecision.targetSlot}!`);
-        }
-      }
+    const windowType = currentInterventionWindow || 'alpha';
+    const botCast = decideBotSpell(currentBoard, windowType);
+    if (botCast) {
+      currentBoard = botCast.board;
+      logEntries.push(botCast.log);
     }
 
-    resumeAfterIntervention(currentBoard, `[Alquimia] ${spell.name} Conjurada!`, logEntries);
+    resumeAfterIntervention(windowType, currentBoard, `[Alquimia] ${spell.name} Conjurada!`, logEntries);
 
     currentInterventionWindow = null;
     phase = 'executing';
     pauseAutoPlay();
   }
 
-  function handlePassIntervention() {
-    if (currentInterventionWindow === 'alpha') {
-      player1.hasPlayedAlphaSpell = true;
+  /**
+   * No modo solo, o Autômato avalia se vale conjurar uma fórmula na janela.
+   * Retorna o tabuleiro resultante e a linha de log, ou null se ele passar.
+   */
+  function decideBotSpell(board: (Card | null)[], windowType: 'alpha' | 'beta') {
+    if (gameMode !== 'solo' || player2.spells.length === 0) return null;
+    if (windowType === 'alpha' ? player2.hasPlayedAlphaSpell : player2.hasPlayedBetaSpell) return null;
+
+    const decision = calculateSpellDecision(player2.spells, board, player2.deckArchetype, windowType);
+    if (!decision.shouldCast || !decision.spellId || decision.targetSlot === undefined || decision.targetSlot === -1) {
+      return null;
+    }
+
+    const spell = player2.spells.find(s => s.id === decision.spellId);
+    if (!spell) return null;
+
+    player2.spells = player2.spells.filter(s => s.id !== spell.id);
+    if (windowType === 'alpha') {
+      player2.hasPlayedAlphaSpell = true;
     } else {
-      player1.hasPlayedBetaSpell = true;
+      player2.hasPlayedBetaSpell = true;
+    }
+
+    return {
+      board: applySpell(board, spell, decision.targetSlot),
+      log: `[Fórmula Rival] Autômato conjurou ${spell.name} na Ilha #${decision.targetSlot}!`
+    };
+  }
+
+  /** Janela em que só o Autômato pode agir (jogador passou ou está sem fórmulas). */
+  function botIntervene(windowType: 'alpha' | 'beta') {
+    const botCast = decideBotSpell(currentStep?.boardState || slots, windowType);
+    if (!botCast) return;
+
+    soundscape.playSpellCast();
+    resumeAfterIntervention(windowType, botCast.board, '[Alquimia Rival] Fórmula do Autômato!', [botCast.log]);
+  }
+
+  function handlePassIntervention() {
+    const windowType = currentInterventionWindow || 'alpha';
+    const user = userPlayerId === 'player1' ? player1 : player2;
+    if (windowType === 'alpha') {
+      user.hasPlayedAlphaSpell = true;
+    } else {
+      user.hasPlayedBetaSpell = true;
     }
     currentInterventionWindow = null;
     phase = 'executing';
+    botIntervene(windowType);
     startAutoPlay();
   }
 
@@ -697,7 +732,7 @@
           {rCross}
           {rTotal}
           spellsCount={userPlayerId === 'player1' ? player1.spells.length : player2.spells.length}
-          isInterventionReady={currentStep?.type === 'alpha_pause' || currentStep?.type === 'beta_pause'}
+          isInterventionReady={(currentStep?.type === 'alpha_pause' && canUserCast('alpha')) || (currentStep?.type === 'beta_pause' && canUserCast('beta'))}
           currentInterventionWindow={currentInterventionWindow}
           onNextStep={stepForward}
           onPrevStep={stepBackward}
