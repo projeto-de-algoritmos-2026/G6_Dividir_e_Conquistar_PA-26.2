@@ -16,9 +16,29 @@
     character === 'kitsune_alchemist' ? 'kitsune' :
     character
   );
+
+  const THEMES: Record<string, { bg: string; floor: string }> = {
+    wolf: { bg: '#181e2b', floor: '#121620' },
+    harpy: { bg: '#2d1b10', floor: '#1f120a' },
+    holstaur: { bg: '#162319', floor: '#0f1911' },
+    bear: { bg: '#24180f', floor: '#170f09' },
+    cat: { bg: '#131e2c', floor: '#0c131c' },
+    dragon: { bg: '#2d1016', floor: '#1c070c' },
+    kitsune: { bg: '#20112e', floor: '#140a1d' }
+  };
+
+  const theme = (THEMES[charKey] ?? { bg: '#160e08', floor: '#0d0805' });
 </script>
 
-<div class="relative flex items-center justify-center overflow-hidden bg-[#160e08] select-none {className}">
+<div
+  class="relative flex items-center justify-center overflow-hidden select-none {className}"
+  style="background-color: {theme.bg};"
+>
+  <!-- Chão contínuo que preenche 100% da largura na base do container -->
+  <div
+    class="absolute inset-x-0 bottom-0 pointer-events-none"
+    style="height: 25%; background-color: {theme.floor};"
+  ></div>
   <!-- Grade de Textura CRT / Scanline Sutil de Pixel Art Clássico 16-bit -->
   <div class="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.5)_50%)] bg-[length:100%_4px] z-10"></div>
 
@@ -26,7 +46,7 @@
     <!-- ========================================== -->
     <!-- FENRIR: LUPINO GUERREIRO (PIXEL ART 16-BIT) -->
     <!-- ========================================== -->
-    <svg viewBox="0 0 32 32" class="w-full h-full" style="image-rendering: pixelated; shape-rendering: crispEdges;">
+    <svg viewBox="0 0 32 32" class="h-full max-w-full aspect-square relative z-0" style="image-rendering: pixelated; shape-rendering: crispEdges;">
       <rect width="32" height="32" fill="#181e2b"/>
       <rect x="0" y="24" width="32" height="8" fill="#121620"/>
 
@@ -97,7 +117,7 @@
     <!-- ========================================== -->
     <!-- ARIA: HARPIA AVIADORA (PIXEL ART 16-BIT)   -->
     <!-- ========================================== -->
-    <svg viewBox="0 0 32 32" class="w-full h-full" style="image-rendering: pixelated; shape-rendering: crispEdges;">
+    <svg viewBox="0 0 32 32" class="h-full max-w-full aspect-square relative z-0" style="image-rendering: pixelated; shape-rendering: crispEdges;">
       <rect width="32" height="32" fill="#2d1b10"/>
       <rect x="0" y="24" width="32" height="8" fill="#1f120a"/>
 
@@ -151,7 +171,7 @@
     <!-- ========================================== -->
     <!-- BRENA: HOLSTAUR COW GUARDIAN (16-BIT)      -->
     <!-- ========================================== -->
-    <svg viewBox="0 0 32 32" class="w-full h-full" style="image-rendering: pixelated; shape-rendering: crispEdges;">
+    <svg viewBox="0 0 32 32" class="h-full max-w-full aspect-square relative z-0" style="image-rendering: pixelated; shape-rendering: crispEdges;">
       <rect width="32" height="32" fill="#162319"/>
       <rect x="0" y="24" width="32" height="8" fill="#0f1911"/>
 
@@ -211,7 +231,7 @@
     <!-- ========================================== -->
     <!-- KORGN: URSO PARDO GUERREIRO (16-BIT)       -->
     <!-- ========================================== -->
-    <svg viewBox="0 0 32 32" class="w-full h-full" style="image-rendering: pixelated; shape-rendering: crispEdges;">
+    <svg viewBox="0 0 32 32" class="h-full max-w-full aspect-square relative z-0" style="image-rendering: pixelated; shape-rendering: crispEdges;">
       <rect width="32" height="32" fill="#24180f"/>
       <rect x="0" y="24" width="32" height="8" fill="#170f09"/>
 
@@ -262,7 +282,7 @@
     <!-- ========================================== -->
     <!-- ELARA: MÍSTICA FELINA (16-BIT)             -->
     <!-- ========================================== -->
-    <svg viewBox="0 0 32 32" class="w-full h-full" style="image-rendering: pixelated; shape-rendering: crispEdges;">
+    <svg viewBox="0 0 32 32" class="h-full max-w-full aspect-square relative z-0" style="image-rendering: pixelated; shape-rendering: crispEdges;">
       <rect width="32" height="32" fill="#131e2c"/>
       <rect x="0" y="24" width="32" height="8" fill="#0c131c"/>
 
@@ -316,7 +336,7 @@
     <!-- ========================================== -->
     <!-- KALLISTA: VALQUÍRIA DRACONIANA (16-BIT)    -->
     <!-- ========================================== -->
-    <svg viewBox="0 0 32 32" class="w-full h-full" style="image-rendering: pixelated; shape-rendering: crispEdges;">
+    <svg viewBox="0 0 32 32" class="h-full max-w-full aspect-square relative z-0" style="image-rendering: pixelated; shape-rendering: crispEdges;">
       <rect width="32" height="32" fill="#2d1016"/>
       <rect x="0" y="24" width="32" height="8" fill="#1c070c"/>
 
@@ -361,7 +381,7 @@
     <!-- ========================================== -->
     <!-- KITSUNE: RAPOSA ALQUIMISTA (16-BIT)        -->
     <!-- ========================================== -->
-    <svg viewBox="0 0 32 32" class="w-full h-full" style="image-rendering: pixelated; shape-rendering: crispEdges;">
+    <svg viewBox="0 0 32 32" class="h-full max-w-full aspect-square relative z-0" style="image-rendering: pixelated; shape-rendering: crispEdges;">
       <rect width="32" height="32" fill="#20112e"/>
       <rect x="0" y="24" width="32" height="8" fill="#140a1d"/>
 

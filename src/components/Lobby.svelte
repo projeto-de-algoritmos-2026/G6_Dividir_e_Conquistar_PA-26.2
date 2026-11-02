@@ -178,18 +178,14 @@
               <PixelIcon name="paw" size={14} /> Seu Guardião
             </div>
 
-            <!-- Retrato principal -->
+            <!-- Retrato principal (preenche o container de ponta a ponta sem barras pretas) -->
             <div class="relative cm-slot h-52 sm:h-60 overflow-hidden" style="border-color: #c9b98c">
-              <div
-                class="absolute inset-0"
-                style="background: radial-gradient(ellipse 70% 55% at 50% 100%, #3a4d8a 0 40%, #26305a 41% 70%, #1b1b1e 71%)"
-              ></div>
               {#key selectedArchetype}
-                <div class="absolute inset-3 cm-anim-pop">
+                <div class="absolute inset-0 cm-anim-pop">
                   <CharacterArt character={meta.artKey} class="w-full h-full" />
                 </div>
               {/key}
-              <span class="absolute -top-[3px] -left-[3px] w-9 h-9 bg-cm-slate border-[3px] border-[#c9b98c] flex items-center justify-center">
+              <span class="absolute -top-[3px] -left-[3px] w-9 h-9 bg-cm-slate border-[3px] border-[#c9b98c] flex items-center justify-center z-20">
                 <PixelIcon name={style.icon} size={18} />
               </span>
             </div>
