@@ -2,6 +2,7 @@
   import type { Card } from '../lib/types';
   import CardView from './CardView.svelte';
   import PixelIcon from './ui/PixelIcon.svelte';
+  import { spellEffectLabel } from '../lib/engine/spells';
   import RoyalBanner from './ui/RoyalBanner.svelte';
 
   interface Props {
@@ -178,11 +179,7 @@
                     {spell.name}
                   </span>
                   <span class="cm-tag !bg-cm-gold text-cm-ink font-bold text-[11px] px-2 py-0.5">
-                    {spell.spellTarget === 'adjacent_swap'
-                      ? 'Permutação'
-                      : spell.passiveValue > 0
-                        ? `+${spell.passiveValue} Peso`
-                        : `${spell.passiveValue} Peso`}
+                    {spell.spellTarget === 'adjacent_swap' ? 'Permutação' : `${spellEffectLabel(spell)} Peso`}
                   </span>
                 </div>
                 <p class="text-[11px] text-cm-tan leading-tight">

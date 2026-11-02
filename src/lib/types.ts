@@ -20,7 +20,7 @@ export interface Card {
   passiveValue: number; // Valor numérico do efeito (dano, cura, bônus)
   passiveDescription: string;
   // Spell specifics
-  spellTarget?: 'self_slot' | 'adjacent_swap' | 'weight_buff' | 'weight_nerf';
+  spellTarget?: 'self_slot' | 'adjacent_swap' | 'weight_buff' | 'weight_nerf' | 'weight_transmute';
 }
 
 export type Phase =
