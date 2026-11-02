@@ -669,11 +669,12 @@
   <main class="relative z-20 flex-1 flex flex-col justify-center px-2 sm:px-4 py-2">
     {#if phase === 'lobby'}
       <Lobby
-        p1Arch={player1Archetype}
-        p2Arch={player2Archetype}
-        onSelectP1Arch={(a) => player1Archetype = a}
-        onSelectP2Arch={(a) => player2Archetype = a}
-        onStartSolo={() => startMatch('solo', player1Archetype, player2Archetype)}
+        selectedArchetype={player1Archetype}
+        onSelectArchetype={(a) => player1Archetype = a}
+        onStartSolo={(botArch) => {
+          player2Archetype = botArch;
+          startMatch('solo', player1Archetype, botArch);
+        }}
         onHostRoom={handleHostRoom}
         onJoinRoom={handleJoinRoom}
         onOpenTutorial={() => isTutorialOpen = true}
@@ -812,7 +813,7 @@
                 <p class="text-xs sm:text-sm text-cm-ink-soft max-w-sm leading-relaxed">
                   {winner === userPlayerId
                     ? 'Seus guardiões dominaram as correntes térmicas e conquistaram os céus com maestria algorítmica!'
-                    : 'O adversário manipulou as inversões e sobrepujou suas defesas nas alas.'}\
+                    : 'O adversário manipulou as inversões e sobrepujou suas defesas nas alas.'}
                 </p>
               </div>
 
