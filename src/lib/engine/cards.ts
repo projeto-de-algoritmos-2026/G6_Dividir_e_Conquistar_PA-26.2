@@ -433,9 +433,10 @@ export function buildDeckHand(archetype: Archetype, owner: 'player1' | 'player2'
     ...otherCreatures.slice(0, 2)
   ].slice(0, 6);
 
+  // IDs determinísticos: os dois clientes P2P montam decks idênticos a partir do arquétipo
   const creatures: Card[] = selectedCreatures.map((c, idx) => ({
     ...c,
-    id: `${owner}_${c.id}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+    id: `${owner}_${c.id}_${idx}`,
     owner
   }));
 
@@ -445,7 +446,7 @@ export function buildDeckHand(archetype: Archetype, owner: 'player1' | 'player2'
 
   const spells: Card[] = spellPool.map((s, idx) => ({
     ...s,
-    id: `${owner}_${s.id}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+    id: `${owner}_${s.id}_${idx}`,
     owner
   }));
 

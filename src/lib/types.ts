@@ -122,5 +122,6 @@ export interface NetworkMessage {
   slotIndex?: number;
   targetSlot?: number;
   windowType?: 'alpha' | 'beta';
+  round?: number; // Rodada a que a jogada pertence (descarta/enfileira mensagens fora de hora)
   boardSnapshot?: (Card | null)[];
 }

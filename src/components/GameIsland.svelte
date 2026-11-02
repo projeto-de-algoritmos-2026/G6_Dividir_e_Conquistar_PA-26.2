@@ -41,9 +41,8 @@
   let roundNumber = $state<number>(1);
   let winner = $state<'player1' | 'player2' | 'draw' | null>(null);
 
-  // Decks Selecionados
-  let player1Archetype = $state<Archetype>('rajadas');
-  let player2Archetype = $state<Archetype>('raiz');
+  // Arquétipo escolhido no lobby (independe do papel P1/P2 na partida)
+  let myArchetype = $state<Archetype>('rajadas');
 
   // Jogadores
   let player1 = $state<PlayerState>({
@@ -87,6 +86,15 @@
   let isConnectingP2P = $state<boolean>(false);
   let connectionError = $state<string | null>(null);
 
+  // P2P: decisões de cada jogador nas janelas Alpha/Beta (ponto de sincronia)
+  type WindowDecision = { kind: 'pass' } | { kind: 'cast'; spellId: string; targetSlot: number };
+  type WindowType = 'alpha' | 'beta';
+  let windowDecisions = $state<Record<WindowType, Partial<Record<'player1' | 'player2', WindowDecision>>>>({ alpha: {}, beta: {} });
+  let resolvedWindows = $state<Record<WindowType, boolean>>({ alpha: false, beta: false });
+  let awaitingOpponent = $state<WindowType | null>(null);
+  // Jogadas do adversário que chegaram antes desta máquina entrar na semeadura
+  let pendingPlacements: NetworkMessage[] = [];
+
   // Tutorial Modal
   let isTutorialOpen = $state<boolean>(false);
 
@@ -127,17 +135,28 @@
   });
 
   // --- INICIALIZAÇÃO DA PARTIDA ---
+  function playerName(id: 'player1' | 'player2', mode: 'solo' | 'p2p'): string {
+    if (mode === 'solo') return id === 'player1' ? 'Comandante' : 'Autômato Rival';
+    return id === userPlayerId ? 'Você' : 'Adversário';
+  }
+
+  function resetWindows() {
+    windowDecisions = { alpha: {}, beta: {} };
+    resolvedWindows = { alpha: false, beta: false };
+    awaitingOpponent = null;
+  }
+
+  /** No modo P2P, userPlayerId deve ser definido antes de chamar startMatch. */
   function startMatch(mode: 'solo' | 'p2p', p1Arch: Archetype, p2Arch: Archetype) {
     gameMode = mode;
-    player1Archetype = p1Arch;
-    player2Archetype = p2Arch;
+    if (mode === 'solo') userPlayerId = 'player1';
 
     const p1Deck = buildDeckHand(p1Arch, 'player1');
     const p2Deck = buildDeckHand(p2Arch, 'player2');
 
     player1 = {
       id: 'player1',
-      name: mode === 'solo' ? 'Comandante' : 'Jogador 1',
+      name: playerName('player1', mode),
       hp: MAX_HP,
       deckArchetype: p1Arch,
       hand: p1Deck.creatures,
@@ -148,7 +167,7 @@
 
     player2 = {
       id: 'player2',
-      name: mode === 'solo' ? 'Autômato Rival' : 'Jogador 2',
+      name: playerName('player2', mode),
       hp: MAX_HP,
       deckArchetype: p2Arch,
       hand: p2Deck.creatures,
@@ -161,8 +180,12 @@
     currentTurn = 'player1';
     roundNumber = 1;
     winner = null;
+    roundReport = null;
+    isConnectingP2P = false;
+    resetWindows();
     phase = 'seeding';
     logs = [`Início da Rodada ${roundNumber}. O arquipélago aguarda a semeadura.`];
+    flushPendingPlacements();
   }
 
   // --- FASE DE SEMEADURA ---
@@ -170,66 +193,45 @@
     selectedCardId = cardId;
   }
 
-  function handlePlaceCard(slotIndex: number) {
-    if (!selectedCardId || slots[slotIndex] !== null) return;
-    if (currentTurn !== userPlayerId) return;
-
-    const currentHand = userPlayerId === 'player1' ? player1.hand : player2.hand;
-    const card = currentHand.find(c => c.id === selectedCardId);
-    if (!card) return;
+  /** Coloca uma carta da mão de `owner` no tabuleiro (jogador local, bot ou adversário P2P). */
+  function placeCard(owner: 'player1' | 'player2', cardId: string, slotIndex: number): boolean {
+    if (slots[slotIndex] !== null) return false;
+    const owningPlayer = owner === 'player1' ? player1 : player2;
+    const card = owningPlayer.hand.find(c => c.id === cardId);
+    if (!card) return false;
 
     slots[slotIndex] = card;
     slots = [...slots];
     soundscape.playCardPlace();
+    owningPlayer.hand = owningPlayer.hand.filter(c => c.id !== cardId);
 
-    if (userPlayerId === 'player1') {
-      player1.hand = player1.hand.filter(c => c.id !== selectedCardId);
+    if (slots.every(s => s !== null)) {
+      startAlgorithmExecution();
     } else {
-      player2.hand = player2.hand.filter(c => c.id !== selectedCardId);
+      currentTurn = owner === 'player1' ? 'player2' : 'player1';
     }
+    return true;
+  }
 
+  function handlePlaceCard(slotIndex: number) {
+    if (!selectedCardId || currentTurn !== userPlayerId) return;
+    const cardId = selectedCardId;
+    if (!placeCard(userPlayerId, cardId, slotIndex)) return;
     selectedCardId = null;
 
     if (gameMode === 'p2p') {
-      networkManager.sendMessage({
-        type: 'PLACE_CARD' as any,
-        player: userPlayerId,
-        cardId: card.id,
-        slotIndex
-      });
-    }
-
-    const filledCount = slots.filter(s => s !== null).length;
-    if (filledCount === 8) {
-      startAlgorithmExecution();
-    } else {
-      currentTurn = userPlayerId === 'player1' ? 'player2' : 'player1';
-      if (gameMode === 'solo' && currentTurn === 'player2') {
-        setTimeout(handleBotSeedingTurn, 500);
-      }
+      networkManager.send({ type: 'place_card', player: userPlayerId, cardId, slotIndex, round: roundNumber });
+    } else if (phase === 'seeding' && currentTurn === 'player2') {
+      setTimeout(handleBotSeedingTurn, 500);
     }
   }
 
   function handleBotSeedingTurn() {
-    if (phase !== 'seeding' || currentTurn !== 'player2') return;
+    if (gameMode !== 'solo' || phase !== 'seeding' || currentTurn !== 'player2') return;
 
     const botDecision = calculateBestMove(player2.hand, slots, player2.deckArchetype);
     if (!botDecision) return;
-
-    const card = player2.hand.find(c => c.id === botDecision.cardId);
-    if (!card) return;
-
-    slots[botDecision.slotIndex] = card;
-    slots = [...slots];
-    soundscape.playCardPlace();
-    player2.hand = player2.hand.filter(c => c.id !== card.id);
-
-    const filledCount = slots.filter(s => s !== null).length;
-    if (filledCount === 8) {
-      startAlgorithmExecution();
-    } else {
-      currentTurn = 'player1';
-    }
+    placeCard('player2', botDecision.cardId, botDecision.slotIndex);
   }
 
   // --- EXECUÇÃO DO ALGORITMO ---
@@ -296,6 +298,13 @@
   }
 
   function advanceStep() {
+    // P2P: não avança além de uma janela que ainda espera decisões
+    const here = currentStep?.type;
+    if (gameMode === 'p2p' && ((here === 'alpha_pause' && !resolvedWindows.alpha) || (here === 'beta_pause' && !resolvedWindows.beta))) {
+      pauseAutoPlay();
+      return;
+    }
+
     if (currentStepIndex >= steps.length - 1) {
       pauseAutoPlay();
       handleResolution();
@@ -307,6 +316,11 @@
     if (nextStep.type === 'alpha_pause' || nextStep.type === 'beta_pause') {
       const windowType = nextStep.type === 'alpha_pause' ? 'alpha' : 'beta';
       currentStepIndex++;
+
+      if (gameMode === 'p2p') {
+        enterP2PWindow(windowType);
+        return;
+      }
 
       if (canUserCast(windowType)) {
         pauseAutoPlay();
@@ -392,6 +406,15 @@
     const spell = activePlayer.spells.find(s => s.id === spellId);
     if (!spell) return;
 
+    if (gameMode === 'p2p') {
+      const windowType = currentInterventionWindow || 'alpha';
+      markUserWindowPlayed(windowType);
+      currentInterventionWindow = null;
+      phase = 'executing';
+      recordDecision(userPlayerId, windowType, { kind: 'cast', spellId, targetSlot }, true);
+      return;
+    }
+
     soundscape.playSpellCast();
     activePlayer.spells = activePlayer.spells.filter(s => s.id !== spellId);
     if (currentInterventionWindow === 'alpha') {
@@ -455,17 +478,98 @@
     resumeAfterIntervention(windowType, botCast.board, '[Alquimia Rival] Fórmula do Autômato!', [botCast.log]);
   }
 
-  function handlePassIntervention() {
-    const windowType = currentInterventionWindow || 'alpha';
+  function markUserWindowPlayed(windowType: WindowType) {
     const user = userPlayerId === 'player1' ? player1 : player2;
     if (windowType === 'alpha') {
       user.hasPlayedAlphaSpell = true;
     } else {
       user.hasPlayedBetaSpell = true;
     }
+  }
+
+  function handlePassIntervention() {
+    const windowType = currentInterventionWindow || 'alpha';
+    markUserWindowPlayed(windowType);
     currentInterventionWindow = null;
     phase = 'executing';
+
+    if (gameMode === 'p2p') {
+      recordDecision(userPlayerId, windowType, { kind: 'pass' }, true);
+      return;
+    }
+
     botIntervene(windowType);
+    startAutoPlay();
+  }
+
+  // --- JANELAS SINCRONIZADAS (P2P) ---
+  function enterP2PWindow(windowType: WindowType) {
+    if (resolvedWindows[windowType]) return;
+    pauseAutoPlay();
+
+    if (!windowDecisions[windowType][userPlayerId]) {
+      if (canUserCast(windowType)) {
+        currentInterventionWindow = windowType;
+        phase = windowType === 'alpha' ? 'alpha_window' : 'beta_window';
+        return;
+      }
+      markUserWindowPlayed(windowType);
+      recordDecision(userPlayerId, windowType, { kind: 'pass' }, true);
+      return;
+    }
+
+    tryResolveP2PWindow(windowType);
+  }
+
+  function recordDecision(player: 'player1' | 'player2', windowType: WindowType, decision: WindowDecision, broadcast: boolean) {
+    windowDecisions[windowType][player] = decision;
+
+    if (broadcast) {
+      networkManager.send(
+        decision.kind === 'cast'
+          ? { type: 'cast_spell', player, windowType, cardId: decision.spellId, targetSlot: decision.targetSlot, round: roundNumber }
+          : { type: 'pass_window', player, windowType, round: roundNumber }
+      );
+    }
+
+    tryResolveP2PWindow(windowType);
+  }
+
+  /**
+   * Resolve a janela quando os dois jogadores decidiram e esta máquina está parada na pausa.
+   * As fórmulas são aplicadas sempre na ordem P1 → P2, garantindo o mesmo tabuleiro nos dois lados.
+   */
+  function tryResolveP2PWindow(windowType: WindowType) {
+    if (resolvedWindows[windowType]) return;
+    const decisions = windowDecisions[windowType];
+    const pauseType = windowType === 'alpha' ? 'alpha_pause' : 'beta_pause';
+
+    if (!decisions[userPlayerId] || currentStep?.type !== pauseType) return;
+    if (!decisions.player1 || !decisions.player2) {
+      awaitingOpponent = windowType;
+      return;
+    }
+
+    awaitingOpponent = null;
+    resolvedWindows[windowType] = true;
+
+    let board = currentStep.boardState;
+    const logEntries: string[] = [];
+    for (const pid of ['player1', 'player2'] as const) {
+      const decision = decisions[pid];
+      if (decision?.kind !== 'cast') continue;
+      const owner = pid === 'player1' ? player1 : player2;
+      const spell = owner.spells.find(s => s.id === decision.spellId);
+      if (!spell) continue;
+      owner.spells = owner.spells.filter(s => s.id !== spell.id);
+      board = applySpell(board, spell, decision.targetSlot);
+      logEntries.push(`[Fórmula] ${owner.name} conjurou ${spell.name} na Ilha #${decision.targetSlot}!`);
+    }
+
+    if (logEntries.length > 0) {
+      soundscape.playSpellCast();
+      resumeAfterIntervention(windowType, board, '[Alquimia] Fórmulas Conjuradas!', logEntries);
+    }
     startAutoPlay();
   }
 
@@ -487,6 +591,8 @@
         winner = 'player2';
       } else {
         winner = 'player1';
+      }
+      if (winner === userPlayerId) {
         confetti({
           particleCount: 100,
           spread: 70,
@@ -521,38 +627,42 @@
     player2.hasPlayedAlphaSpell = false;
     player2.hasPlayedBetaSpell = false;
 
+    resetWindows();
     phase = 'seeding';
     if (gameMode === 'solo' && currentTurn === 'player2') {
       setTimeout(handleBotSeedingTurn, 500);
     }
+    flushPendingPlacements();
   }
 
   function restartGame() {
+    pauseAutoPlay();
     phase = 'lobby';
     hostRoomCode = '';
     connectionError = null;
+    isConnectingP2P = false;
+    pendingPlacements = [];
+    if (gameMode === 'p2p') {
+      networkManager.disconnect();
+    }
+    gameMode = 'solo';
+    userPlayerId = 'player1';
   }
 
   // --- P2P HOST & JOIN ---
+  // Handshake: o convidado envia 'join' com seu arquétipo; o anfitrião responde 'deck_select'
+  // com o dele. Como os IDs das cartas são determinísticos, os dois montam os mesmos decks.
   async function handleHostRoom() {
     isConnectingP2P = true;
     connectionError = null;
+    networkManager.setCallbacks(handleIncomingNetworkMessage, handleNetworkStatus);
 
     try {
-      const code = await networkManager.initializeHost(
-        () => {
-          isConnectingP2P = false;
-          startMatch('p2p', player1Archetype, 'raiz');
-        },
-        handleIncomingNetworkMessage,
-        (err) => {
-          connectionError = err;
-          isConnectingP2P = false;
-        }
-      );
-      hostRoomCode = code;
+      hostRoomCode = await networkManager.hostRoom();
     } catch (err: any) {
-      connectionError = err?.message || 'Falha ao iniciar P2P.';
+      connectionError = connectionError ?? err?.message ?? 'Falha ao iniciar P2P.';
+      hostRoomCode = '';
+    } finally {
       isConnectingP2P = false;
     }
   }
@@ -560,63 +670,70 @@
   async function handleJoinRoom(code: string) {
     isConnectingP2P = true;
     connectionError = null;
-
-    networkManager.initializeGuest(
-      () => {
-        isConnectingP2P = false;
-        userPlayerId = 'player2';
-        startMatch('p2p', 'raiz', player1Archetype);
-      },
-      handleIncomingNetworkMessage,
-      (err) => {
-        connectionError = err;
-        isConnectingP2P = false;
-      }
-    );
+    networkManager.setCallbacks(handleIncomingNetworkMessage, handleNetworkStatus);
 
     try {
       await networkManager.joinRoom(code);
+      networkManager.send({ type: 'join', player: 'player2', archetype: myArchetype });
     } catch (err: any) {
-      connectionError = err?.message || 'Erro ao conectar à sala.';
+      connectionError = connectionError ?? err?.message ?? 'Erro ao conectar à sala.';
       isConnectingP2P = false;
     }
   }
 
+  function handleNetworkStatus(status: 'disconnected' | 'connecting' | 'connected' | 'error', detail?: string) {
+    if (status === 'error') {
+      connectionError = detail ?? 'Erro de conexão P2P.';
+      isConnectingP2P = false;
+    } else if (status === 'disconnected' && gameMode === 'p2p' && phase !== 'lobby' && phase !== 'match_end') {
+      restartGame();
+      connectionError = 'A conexão com o adversário foi encerrada.';
+    }
+  }
+
+  function flushPendingPlacements() {
+    const queued = pendingPlacements;
+    pendingPlacements = [];
+    for (const msg of queued) handleIncomingNetworkMessage(msg);
+  }
+
   function handleIncomingNetworkMessage(msg: NetworkMessage) {
-    if (msg.type === 'PLACE_CARD' as any) {
-      if (slots[msg.slotIndex!] === null) {
-        const currentHand = msg.player === 'player1' ? player1.hand : player2.hand;
-        const card = currentHand.find(c => c.id === msg.cardId) || {
-          id: msg.cardId!,
-          name: 'Fenrir Lupino',
-          speciesName: 'Guerreiro Lupino',
-          weight: 5,
-          originalWeight: 5,
-          archetype: 'rajadas',
-          type: 'creature',
-          owner: msg.player,
-          flavor: 'Convocada via P2P',
-          illustration: 'wolf',
-          passiveValue: 2,
-          passiveDescription: ''
-        };
-
-        slots[msg.slotIndex!] = card;
-        soundscape.playCardPlace();
-
-        if (msg.player === 'player1') {
-          player1.hand = player1.hand.filter(c => c.id !== msg.cardId);
-        } else {
-          player2.hand = player2.hand.filter(c => c.id !== msg.cardId);
+    switch (msg.type) {
+      case 'join':
+        if (networkManager.isHost && phase === 'lobby' && msg.archetype) {
+          userPlayerId = 'player1';
+          networkManager.send({ type: 'deck_select', player: 'player1', archetype: myArchetype });
+          startMatch('p2p', myArchetype, msg.archetype);
         }
+        break;
 
-        const filledCount = slots.filter(s => s !== null).length;
-        if (filledCount === 8) {
-          startAlgorithmExecution();
-        } else {
-          currentTurn = msg.player === 'player1' ? 'player2' : 'player1';
+      case 'deck_select':
+        if (!networkManager.isHost && phase === 'lobby' && msg.archetype) {
+          userPlayerId = 'player2';
+          startMatch('p2p', msg.archetype, myArchetype);
         }
-      }
+        break;
+
+      case 'place_card':
+        if (phase !== 'seeding' || msg.round !== roundNumber) {
+          pendingPlacements = [...pendingPlacements, msg];
+        } else if (msg.cardId && msg.slotIndex !== undefined) {
+          placeCard(msg.player, msg.cardId, msg.slotIndex);
+        }
+        break;
+
+      case 'cast_spell':
+      case 'pass_window':
+        if (msg.round !== roundNumber || !msg.windowType) break;
+        recordDecision(
+          msg.player,
+          msg.windowType,
+          msg.type === 'cast_spell' && msg.cardId && msg.targetSlot !== undefined
+            ? { kind: 'cast', spellId: msg.cardId, targetSlot: msg.targetSlot }
+            : { kind: 'pass' },
+          false
+        );
+        break;
     }
   }
 </script>
@@ -693,12 +810,9 @@
   <main class="relative z-20 flex-1 flex flex-col justify-center px-2 sm:px-4 py-2">
     {#if phase === 'lobby'}
       <Lobby
-        selectedArchetype={player1Archetype}
-        onSelectArchetype={(a) => player1Archetype = a}
-        onStartSolo={(botArch) => {
-          player2Archetype = botArch;
-          startMatch('solo', player1Archetype, botArch);
-        }}
+        selectedArchetype={myArchetype}
+        onSelectArchetype={(a) => myArchetype = a}
+        onStartSolo={(botArch) => startMatch('solo', myArchetype, botArch)}
         onHostRoom={handleHostRoom}
         onJoinRoom={handleJoinRoom}
         onOpenTutorial={() => isTutorialOpen = true}
@@ -720,6 +834,12 @@
       />
     {:else if phase === 'executing' || phase === 'alpha_window' || phase === 'beta_window' || phase === 'round_end'}
       <div class="w-full flex flex-col items-center gap-3">
+        {#if awaitingOpponent}
+          <div class="cm-bubble px-4 py-2 text-[13px] font-bold flex items-center gap-2">
+            <span class="w-2.5 h-2.5 bg-cm-hp border-2 border-cm-frame cm-anim-blink"></span>
+            Aguardando a decisão do adversário na Janela {awaitingOpponent === 'alpha' ? 'Alpha' : 'Beta'}…
+          </div>
+        {/if}
         <AlgorithmicBoard
           step={currentStep}
           cards={activeBoardCards}
@@ -835,8 +955,8 @@
               <!-- Estandarte com Ícone do Duelo -->
               <div class="flex items-center justify-center gap-4 py-2">
                 <Pennant
-                  emblem={winner === 'player1' ? 'star' : 'sword'}
-                  tone={winner === 'player1' ? 'blue' : 'red'}
+                  emblem={winner === userPlayerId ? 'star' : 'sword'}
+                  tone={winner === userPlayerId ? 'blue' : 'red'}
                   class="w-28 h-auto"
                 />
               </div>
@@ -852,6 +972,8 @@
                 <p class="text-xs sm:text-sm text-cm-ink-soft max-w-sm leading-relaxed">
                   {winner === userPlayerId
                     ? 'Seus guardiões dominaram as correntes térmicas e conquistaram os céus com maestria algorítmica!'
+                    : winner === 'draw'
+                    ? 'Os dois lados tombaram juntos no mesmo vendaval.'
                     : 'O adversário manipulou as inversões e sobrepujou suas defesas nas alas.'}
                 </p>
               </div>
