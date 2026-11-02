@@ -7,10 +7,11 @@
     Card,
     AlgorithmStep,
     PlayerState,
-    NetworkMessage
+    NetworkMessage,
+    StepTotals
   } from '../lib/types';
   import { buildDeckHand, ARCHETYPES } from '../lib/engine/cards';
-  import { generateAlgorithmSteps, cloneCards, type StepSimulationResult } from '../lib/engine/inversions';
+  import { generateAlgorithmSteps, cloneCards } from '../lib/engine/inversions';
   import { calculateBestMove, calculateSpellDecision } from '../lib/engine/bot';
   import { applySpell } from '../lib/engine/spells';
   import { networkManager } from '../lib/network/peer';
@@ -30,7 +31,9 @@
   import RoyalBanner from './ui/RoyalBanner.svelte';
   import Pennant from './ui/Pennant.svelte';
 
-  // --- ESTADO REATIVO COM RUNES (SVELTE 5) ---\
+  const MAX_HP = 30;
+
+  // --- ESTADO REATIVO COM RUNES (SVELTE 5) ---
   let phase = $state<Phase>('lobby');
   let gameMode = $state<'solo' | 'p2p'>('solo');
   let userPlayerId = $state<'player1' | 'player2'>('player1');
@@ -46,7 +49,7 @@
   let player1 = $state<PlayerState>({
     id: 'player1',
     name: 'Jogador 1',
-    hp: 30,
+    hp: MAX_HP,
     deckArchetype: 'rajadas',
     hand: [],
     spells: [],
@@ -57,7 +60,7 @@
   let player2 = $state<PlayerState>({
     id: 'player2',
     name: 'Autômato Heurístico',
-    hp: 30,
+    hp: MAX_HP,
     deckArchetype: 'raiz',
     hand: [],
     spells: [],
@@ -71,7 +74,6 @@
 
   // Execução do Algoritmo
   let steps = $state<AlgorithmStep[]>([]);
-  let lastSimulation = $state<StepSimulationResult | null>(null);
   let currentStepIndex = $state<number>(0);
   let isPlaying = $state<boolean>(false);
   let playbackSpeed = $state<number>(1);
@@ -87,6 +89,9 @@
 
   // Tutorial Modal
   let isTutorialOpen = $state<boolean>(false);
+
+  // Balanço de dano e cura da última rodada (exibido no relatório)
+  let roundReport = $state<StepTotals | null>(null);
 
   // Logs da Partida
   let logs = $state<string[]>([]);
@@ -133,7 +138,7 @@
     player1 = {
       id: 'player1',
       name: mode === 'solo' ? 'Comandante' : 'Jogador 1',
-      hp: 30,
+      hp: MAX_HP,
       deckArchetype: p1Arch,
       hand: p1Deck.creatures,
       spells: p1Deck.spells,
@@ -144,7 +149,7 @@
     player2 = {
       id: 'player2',
       name: mode === 'solo' ? 'Autômato Rival' : 'Jogador 2',
-      hp: 30,
+      hp: MAX_HP,
       deckArchetype: p2Arch,
       hand: p2Deck.creatures,
       spells: p2Deck.spells,
@@ -236,7 +241,6 @@
     const initialBoard = cloneCards(slots);
     const sim = generateAlgorithmSteps(initialBoard);
     steps = sim.steps;
-    lastSimulation = sim;
     logs = [...logs, `Tabuleiro completo. O arquipélago divide-se em nichos.`];
 
     startAutoPlay();
@@ -360,7 +364,6 @@
       initialStepCounter: (base?.id ?? currentStepIndex) + 1
     });
 
-    lastSimulation = remainingSim;
 
     const interventionStep: AlgorithmStep = {
       id: base?.id ?? currentStepIndex,
@@ -469,11 +472,12 @@
   // --- RESOLUÇÃO DA RODADA ---
   function handleResolution() {
     const finalStep = steps[steps.length - 1];
-    const p1Damage = finalStep?.eventPayload?.finalDamageP1 ?? lastSimulation?.totalDamageP1 ?? 0;
-    const p2Damage = finalStep?.eventPayload?.finalDamageP2 ?? lastSimulation?.totalDamageP2 ?? 0;
+    const totals = finalStep?.totals ?? { damageP1: 0, damageP2: 0, healP1: 0, healP2: 0 };
+    roundReport = totals;
 
-    player1.hp = Math.max(0, player1.hp - p1Damage);
-    player2.hp = Math.max(0, player2.hp - p2Damage);
+    // Dano e cura da rodada são aplicados juntos; o HP fica entre 0 e MAX_HP
+    player1.hp = Math.min(MAX_HP, Math.max(0, player1.hp - totals.damageP1 + totals.healP1));
+    player2.hp = Math.min(MAX_HP, Math.max(0, player2.hp - totals.damageP2 + totals.healP2));
 
     if (player1.hp <= 0 || player2.hp <= 0) {
       phase = 'match_end';
@@ -639,13 +643,13 @@
             <div class="flex items-center gap-1.5 text-xs font-bold leading-none">
               <span class="text-white drop-shadow-[1px_1px_0_#1e1d21]">{player1.name}</span>
               <span class="text-[11px] px-1.5 py-0.2 rounded-[2px] bg-[#1a1b1f] text-[#86efac] font-mono">
-                {player1.hp}/30
+                {player1.hp}/{MAX_HP}
               </span>
             </div>
             <div class="w-24 sm:w-36 cm-hud-bar rounded-full">
               <div
                 class="cm-hud-bar-fill transition-all duration-300"
-                style="width: {(player1.hp / 30) * 100}%"
+                style="width: {(player1.hp / MAX_HP) * 100}%"
               ></div>
             </div>
           </div>
@@ -666,14 +670,14 @@
           <div class="flex flex-col gap-0.5 items-end">
             <div class="flex items-center gap-1.5 text-xs font-bold leading-none">
               <span class="text-[11px] px-1.5 py-0.2 rounded-[2px] bg-[#1a1b1f] text-[#fca5a5] font-mono">
-                {player2.hp}/30
+                {player2.hp}/{MAX_HP}
               </span>
               <span class="text-white drop-shadow-[1px_1px_0_#1e1d21]">{player2.name}</span>
             </div>
             <div class="w-24 sm:w-36 cm-hud-bar rounded-full">
               <div
                 class="cm-hud-bar-fill transition-all duration-300 !bg-[#d95738] !shadow-[inset_0_2px_0_#f87171]"
-                style="width: {(player2.hp / 30) * 100}%"
+                style="width: {(player2.hp / MAX_HP) * 100}%"
               ></div>
             </div>
           </div>
@@ -783,6 +787,21 @@
                   <span class="text-xl text-white font-mono">{player2.hp}</span>
                 </div>
               </div>
+
+              {#if roundReport}
+                <div class="w-full grid grid-cols-2 gap-2 text-[11px] font-bold">
+                  <div class="px-2 py-1.5 flex flex-col items-center bg-[#1b1b1e] text-white rounded-[4px] border-2 border-cm-frame">
+                    <span>P1</span>
+                    <span class="text-[#fca5a5]">−{roundReport.damageP1} dano</span>
+                    <span class="text-[#86efac]">+{roundReport.healP1} cura</span>
+                  </div>
+                  <div class="px-2 py-1.5 flex flex-col items-center bg-[#1b1b1e] text-white rounded-[4px] border-2 border-cm-frame">
+                    <span>P2</span>
+                    <span class="text-[#fca5a5]">−{roundReport.damageP2} dano</span>
+                    <span class="text-[#86efac]">+{roundReport.healP2} cura</span>
+                  </div>
+                </div>
+              {/if}
 
               <!-- Balão de Fala do Assistente (Screenshot 03) -->
               <div class="cm-bubble tail-bottom p-3 text-xs leading-relaxed text-cm-ink">
