@@ -33,16 +33,16 @@ export const ARCHETYPES: Record<Archetype, ArchetypeMeta> = {
   raiz: {
     id: 'raiz',
     name: 'Baluartes da Terra & Ursídeos',
-    species: 'Bovinos & Ursídeos',
+    species: 'Titãs Ursídeos & Defensores',
     subtitle: 'Pedágio Pesado & Resistência de Espinhos',
-    description: 'Guardiões maciços e corpulentos (pesos 16 a 25) ancorados na Ala Poente. Equipados com couraças de latão e marretas de carvalho rúnico, devolvem dano massivo em retaliação a qualquer invasor que tente saltá-los.',
+    description: 'Guardiões maciços e corpulentos (pesos 16 a 25) ancorados na Ala Poente. Equipados com ombreiras titânicas de bronze e marretas de carvalho rúnico, devolvem dano massivo em retaliação a qualquer invasor que tente saltá-los.',
     weightRange: '16 - 25',
     themeColor: 'text-emerald-400',
     badgeBg: 'bg-emerald-950/80 text-emerald-300 border-emerald-600/60',
     accentBorder: 'border-emerald-600 shadow-emerald-600/30',
     quote: '"Nenhum vendaval verga quem tem a terra e as raízes no coração."',
-    artKey: 'holstaur_matriarch',
-    image: '/assets/cards/holstaur.jpg'
+    artKey: 'bear',
+    image: '/assets/cards/bear.jpg'
   },
   zefiro: {
     id: 'zefiro',
@@ -61,7 +61,7 @@ export const ARCHETYPES: Record<Archetype, ArchetypeMeta> = {
   eter: {
     id: 'eter',
     name: 'Guilda das Raposas Alquímicas',
-    species: 'Kitsunes & Transmutadores',
+    species: 'Feiticeiras Kitsune & Alquimistas',
     subtitle: 'Mutação Numérica & Alquimia Arcana',
     description: 'Raposas místicas de múltiplas caudas flamejantes e alquimistas arcanos. Ao sofrerem inversões nos níveis iniciais, transmutam seus próprios pesos numéricos e invertem a lógica do combate.',
     weightRange: 'Variável',
@@ -292,8 +292,8 @@ export const CARD_CATALOG: Card[] = [
   // --- GUILDA DAS RAPOSAS ALQUÍMICAS (Mutação, Kitsune & Alquimia) ---
   {
     id: 'kael_kitsune',
-    name: 'Kael, Alquimista Kitsune',
-    speciesName: 'Alquimista Kitsune',
+    name: 'Vixen, Alquimista Kitsune',
+    speciesName: 'Feiticeira Kitsune',
     weight: 7,
     originalWeight: 7,
     archetype: 'eter',
