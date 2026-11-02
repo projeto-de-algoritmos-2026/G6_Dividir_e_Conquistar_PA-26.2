@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/Logo.png" alt="DIVIDE ET IMPERA - Skyward Inversions" width="380" />
+  <img src="./assets/Logo.png" alt="DIVIDE ET IMPERA - Skyward Inversions" width="520" />
 </p>
 
 <p align="center">
@@ -7,7 +7,7 @@
     <img src="https://img.shields.io/badge/JOGAR%20AGORA-2563eb?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0yMS41OCAxNi4wOWwtMS4wOS03LjY2QzIwLjIxIDYuNDYgMTguNTIgNSAxNi41MyA1SDcuNDdDNS40OCA1IDMuNzkgNi40NiAzLjUxIDguNDNsLTEuMDkgNy42NkMyLjIgMTcuNjMgMy4zOSAxOSA0Ljk0IDE5Yy42OSAwIDEuMzItLjI4IDEuNzctLjc0TDkgMTZoNmwyLjI5IDIuMjZjLjQ1LjQ2IDEuMDguNzQgMS43Ny43NCAxLjU1IDAgMi43NC0xLjM3IDIuNTItMi45MXpNMTEgMTFIOXYySDh2LTJINnYtMWgyVjhoMXYyaDJ2MXptNC0xYy0uNTUgMC0xLS40NS0xLTFzLjQ1LTEgMS0xIDEgLjQ1IDEgMS0uNDUgMS0xIDF6bTIgM2MtLjU1IDAtMS0uNDUtMS0xcy40NS0xIDEtMSAxIC40NSAxIDEtLjQ1IDEtMSAxeiIvPjwvc3ZnPg==" alt="Jogar Agora" />
   </a>
   &nbsp;&nbsp;
-  <a href="https://youtu.be/Dm7IThr2un4" target="_blank">
+  <a href="https://youtu.be/DyDZmRH91o4" target="_blank">
     <img src="https://img.shields.io/badge/ASSISTIR%20APRESENTA%C3%87%C3%83O-c4302b?style=for-the-badge&logo=youtube&logoColor=white" alt="Vídeo de Apresentação" />
   </a>
 </p>
@@ -27,6 +27,9 @@ Conteúdo da Disciplina: Dividir e Conquistar (D&C)<br>
 ## Sobre
 
 O **Divide et Impera: Skyward Inversions** é um jogo tático de cartas 1v1 desenvolvido para a disciplina de Projeto de Algoritmos da Universidade de Brasília (UnB). Ambientado em um universo pastoral celeste inspirado na estética e na identidade visual de *Cloud Meadow*, o projeto transforma a mecânica do paradigma de **Dividir e Conquistar** no motor dinâmico e visual dos combates: o cálculo e a contagem de inversões via **Sort-and-Count (Merge-and-Count)** em tempo ótimo $\mathcal{O}(n \log n)$.
+
+- **Acesso Online (GitHub Pages):** [https://projeto-de-algoritmos-2026.github.io/G6_Dividir_e_Conquistar_PA-26.2/](https://projeto-de-algoritmos-2026.github.io/G6_Dividir_e_Conquistar_PA-26.2/)
+- **Vídeo de Apresentação:** [https://youtu.be/DyDZmRH91o4](https://youtu.be/DyDZmRH91o4)
 
 ### Como funciona
 
@@ -61,7 +64,7 @@ O **Divide et Impera: Skyward Inversions** é um jogo tático de cartas 1v1 dese
 ## Instalação
 
 **Linguagem:** TypeScript<br>
-**Framework Web:** Astro + Svelte 5 (Runes)<br>
+**Framework:** Astro 5 + Svelte 5 (Runes)<br>
 
 ### Pré-requisitos
 
@@ -107,7 +110,7 @@ O jogo estará disponível no navegador em: `http://localhost:4321/`
 
 ### Link do Vídeo de Apresentação
 
-- [https://youtu.be/Dm7IThr2un4](https://youtu.be/Dm7IThr2un4)
+- [https://youtu.be/DyDZmRH91o4](https://youtu.be/DyDZmRH91o4)
 
 ### Comandos Adicionais
 
