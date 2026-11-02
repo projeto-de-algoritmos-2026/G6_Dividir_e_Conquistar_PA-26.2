@@ -2,6 +2,7 @@
   import type { Card } from '../lib/types';
   import RoyalBanner from './ui/RoyalBanner.svelte';
   import PixelIcon from './ui/PixelIcon.svelte';
+  import { applySpell, spellEffectLabel } from '../lib/engine/spells';
 
   interface Props {
     windowType: 'alpha' | 'beta';
@@ -13,7 +14,7 @@
 
   let { windowType, spells, boardCards, onCastSpell, onPassWindow }: Props = $props();
 
-  let selectedSpellId = $state<string | null>(spells.length > 0 ? spells[0].id : null);
+  let selectedSpellId = $state<string | null>(null);
   let selectedTargetSlot = $state<number>(0);
 
   // Garante seleção reativa se a lista de magias mudar
@@ -71,11 +72,7 @@
                       {spell.name}
                     </span>
                     <span class="cm-coin text-xs px-2 py-0.5">
-                      {spell.spellTarget === 'adjacent_swap'
-                        ? 'Swap'
-                        : spell.passiveValue > 0
-                          ? `+${spell.passiveValue}`
-                          : spell.passiveValue}
+                      {spellEffectLabel(spell)}
                     </span>
                   </div>
                   <p class="text-[12px] text-cm-ink-soft leading-tight line-clamp-2">
@@ -134,11 +131,12 @@
                 <span>Impacto Alquímico em <strong>Ilha #{selectedTargetSlot}</strong> ({targetCard.name}):</span>
               </div>
               <div class="font-bold">
-                {#if selectedSpell.spellTarget === 'weight_buff'}
-                  <span class="text-cm-hp">Peso {targetCard.weight} → {targetCard.weight + selectedSpell.passiveValue} (+{selectedSpell.passiveValue})</span>
-                {:else if selectedSpell.spellTarget === 'weight_nerf'}
-                  <span class="text-[#f08a3c]">Peso {targetCard.weight} → {Math.max(1, targetCard.weight + selectedSpell.passiveValue)} ({selectedSpell.passiveValue})</span>
-                {:else if selectedSpell.spellTarget === 'adjacent_swap'}
+                {#if selectedSpell.spellTarget !== 'adjacent_swap'}
+                  {@const newWeight = applySpell(boardCards, selectedSpell, selectedTargetSlot)[selectedTargetSlot]?.weight ?? targetCard.weight}
+                  <span class={newWeight >= targetCard.weight ? 'text-cm-hp' : 'text-[#f08a3c]'}>
+                    Peso {targetCard.weight} → {newWeight} ({newWeight >= targetCard.weight ? '+' : ''}{newWeight - targetCard.weight})
+                  </span>
+                {:else}
                   {@const neighborSlot = selectedTargetSlot < 7 ? selectedTargetSlot + 1 : selectedTargetSlot - 1}
                   {@const neighborCard = boardCards[neighborSlot]}
                   <span class="text-cm-gold">

@@ -20,7 +20,7 @@ export interface Card {
   passiveValue: number; // Valor numérico do efeito (dano, cura, bônus)
   passiveDescription: string;
   // Spell specifics
-  spellTarget?: 'self_slot' | 'adjacent_swap' | 'weight_buff' | 'weight_nerf';
+  spellTarget?: 'self_slot' | 'adjacent_swap' | 'weight_buff' | 'weight_nerf' | 'weight_transmute';
 }
 
 export type Phase =
@@ -50,6 +50,13 @@ export type AlgorithmStepType =
   | 'vortex_burst_inversion' // a_j < a_i -> K inversões simultâneas!
   | 'round_resolution'; // Cálculo do dano total e impacto nos HPs
 
+export interface StepTotals {
+  damageP1: number;
+  damageP2: number;
+  healP1: number;
+  healP2: number;
+}
+
 export interface AlgorithmStep {
   id: number;
   type: AlgorithmStepType;
@@ -60,6 +67,8 @@ export interface AlgorithmStep {
   rB: number;
   rCross: number;
   rTotal: number;
+  // Dano e cura acumulados até este passo (inclusive)
+  totals: StepTotals;
   // Estado completo do array no momento
   boardState: (Card | null)[];
   // Pointers ativos para visualização
@@ -113,5 +122,6 @@ export interface NetworkMessage {
   slotIndex?: number;
   targetSlot?: number;
   windowType?: 'alpha' | 'beta';
+  round?: number; // Rodada a que a jogada pertence (descarta/enfileira mensagens fora de hora)
   boardSnapshot?: (Card | null)[];
 }

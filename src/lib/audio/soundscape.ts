@@ -129,6 +129,34 @@ class Soundscape {
   }
 
   /**
+   * Som de conjuração alquímica (arpejo ascendente cintilante)
+   */
+  public playSpellCast() {
+    if (!this.enabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const freqs = [392.0, 587.33, 783.99, 1174.66]; // Arpejo G-D-G-D
+
+    freqs.forEach((f, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f, t + idx * 0.07);
+
+      gain.gain.setValueAtTime(0.07, t + idx * 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.07 + 0.3);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t + idx * 0.07);
+      osc.stop(t + idx * 0.07 + 0.3);
+    });
+  }
+
+  /**
    * Som do Grande Vórtice K-Inversion (explosão cinegética com múltiplos tons)
    */
   public playVortexBurst(k: number = 3) {

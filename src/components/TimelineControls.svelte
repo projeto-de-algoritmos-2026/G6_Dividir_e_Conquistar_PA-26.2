@@ -109,7 +109,7 @@
         <button
           type="button"
           onclick={onOpenIntervention}
-          disabled={spellsCount === 0}
+          disabled={spellsCount === 0 || !isInterventionReady}
           class="transition-all px-3 py-1.5 text-xs font-bold rounded-[3px] flex items-center gap-1.5
             {isInterventionReady
               ? 'cm-btn cm-gold-ring cm-anim-bob !bg-cm-gold !text-cm-ink'

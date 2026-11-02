@@ -419,8 +419,8 @@ export const SPELL_CATALOG: Card[] = [
     illustration: 'kitsune',
     image: '/assets/cards/kitsune.jpg',
     passiveValue: 5,
-    passiveDescription: 'Intervenção: Adiciona ou subtrai 5 do peso de uma criatura alvo.',
-    spellTarget: 'weight_buff'
+    passiveDescription: 'Intervenção: Transmuta o peso do alvo: +5 se for até 10, senão −5 (mínimo 1).',
+    spellTarget: 'weight_transmute'
   }
 ];
 
@@ -433,15 +433,20 @@ export function buildDeckHand(archetype: Archetype, owner: 'player1' | 'player2'
     ...otherCreatures.slice(0, 2)
   ].slice(0, 6);
 
+  // IDs determinísticos: os dois clientes P2P montam decks idênticos a partir do arquétipo
   const creatures: Card[] = selectedCreatures.map((c, idx) => ({
     ...c,
-    id: `${owner}_${c.id}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+    id: `${owner}_${c.id}_${idx}`,
     owner
   }));
 
-  const spells: Card[] = SPELL_CATALOG.slice(0, 2).map((s, idx) => ({
+  // Fórmula assinatura do arquétipo + a fórmula seguinte do catálogo (circular)
+  const signatureIdx = SPELL_CATALOG.findIndex(s => s.archetype === archetype);
+  const spellPool = [SPELL_CATALOG[signatureIdx], SPELL_CATALOG[(signatureIdx + 1) % SPELL_CATALOG.length]];
+
+  const spells: Card[] = spellPool.map((s, idx) => ({
     ...s,
-    id: `${owner}_${s.id}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+    id: `${owner}_${s.id}_${idx}`,
     owner
   }));
 
