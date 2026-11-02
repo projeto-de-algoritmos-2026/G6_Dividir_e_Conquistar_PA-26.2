@@ -661,7 +661,7 @@
       </div>
 
       <!-- Relógio Celestial Suspenso por Corrente de Metal (ref 01) -->
-      <SkyClock roundNumber={roundNumber} totalRounds={3} />
+      <SkyClock tag="R{roundNumber}" />
     </header>
   {/if}
 

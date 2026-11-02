@@ -194,8 +194,6 @@ export function generateAlgorithmSteps(
           `Inversão detectada: +1 em r_${idx < 2 ? 'A' : 'B'}`,
           { activePair: [left, right] },
           {
-            aggressor: cRight,
-            victims: [cLeft],
             swappedIndices: [left, right],
             damageP1: effect.dmgP1,
             damageP2: effect.dmgP2,
@@ -321,8 +319,6 @@ export function generateAlgorithmSteps(
             `+${kRemaining} Inversões locais`,
             undefined,
             {
-              aggressor: cB,
-              victims,
               kInversions: kRemaining,
               damageP1: effect.dmgP1,
               damageP2: effect.dmgP2,
@@ -452,8 +448,6 @@ export function generateAlgorithmSteps(
         `+${kCross} Inversões Cruzadas em O(1)`,
         { auroraIndex: ptrA, ocasoIndex: 4 + ptrB - 1 },
         {
-          aggressor: cardB,
-          victims,
           kInversions: kCross,
           damageP1: effect.dmgP1,
           damageP2: effect.dmgP2,

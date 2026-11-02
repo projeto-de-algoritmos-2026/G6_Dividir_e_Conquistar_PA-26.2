@@ -13,7 +13,7 @@
 
   let { windowType, spells, boardCards, onCastSpell, onPassWindow }: Props = $props();
 
-  let selectedSpellId = $state<string | null>(spells.length > 0 ? spells[0].id : null);
+  let selectedSpellId = $state<string | null>(null);
   let selectedTargetSlot = $state<number>(0);
 
   // Garante seleção reativa se a lista de magias mudar

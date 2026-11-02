@@ -1,4 +1,4 @@
-import type { Card, GameState, Archetype } from '../types';
+import type { Card, Archetype } from '../types';
 import { generateAlgorithmSteps, cloneCards } from './inversions';
 
 export interface BotDecision {
