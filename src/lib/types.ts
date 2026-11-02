@@ -50,6 +50,13 @@ export type AlgorithmStepType =
   | 'vortex_burst_inversion' // a_j < a_i -> K inversões simultâneas!
   | 'round_resolution'; // Cálculo do dano total e impacto nos HPs
 
+export interface StepTotals {
+  damageP1: number;
+  damageP2: number;
+  healP1: number;
+  healP2: number;
+}
+
 export interface AlgorithmStep {
   id: number;
   type: AlgorithmStepType;
@@ -60,6 +67,8 @@ export interface AlgorithmStep {
   rB: number;
   rCross: number;
   rTotal: number;
+  // Dano e cura acumulados até este passo (inclusive)
+  totals: StepTotals;
   // Estado completo do array no momento
   boardState: (Card | null)[];
   // Pointers ativos para visualização

@@ -65,6 +65,12 @@ export function generateAlgorithmSteps(
       rB,
       rCross,
       rTotal: rA + rB + rCross,
+      totals: {
+        damageP1: totalDamageP1,
+        damageP2: totalDamageP2,
+        healP1: totalHealP1,
+        healP2: totalHealP2
+      },
       boardState: cloneCards(board),
       activePointers,
       eventPayload

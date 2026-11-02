@@ -12,6 +12,7 @@
   import { buildDeckHand, ARCHETYPES } from '../lib/engine/cards';
   import { generateAlgorithmSteps, cloneCards, type StepSimulationResult } from '../lib/engine/inversions';
   import { calculateBestMove, calculateSpellDecision } from '../lib/engine/bot';
+  import { applySpell } from '../lib/engine/spells';
   import { networkManager } from '../lib/network/peer';
   import { soundscape } from '../lib/audio/soundscape';
 
@@ -333,6 +334,51 @@
   }
 
   // --- JANELAS DE INTERVENÇÃO DE MAGIAS ---
+  /**
+   * Retoma o algoritmo a partir da janela atual com o tabuleiro alterado por fórmulas.
+   * Dano, cura e inversões acumulados vêm do passo atual (e não do total da simulação
+   * anterior, que já incluía passos futuros descartados).
+   */
+  function resumeAfterIntervention(board: (Card | null)[], title: string, logEntries: string[]) {
+    const winType = currentInterventionWindow || 'alpha';
+    const base = currentStep;
+    const totals = base?.totals ?? { damageP1: 0, damageP2: 0, healP1: 0, healP2: 0 };
+
+    const remainingSim = generateAlgorithmSteps(board, {
+      startFrom: winType,
+      initialRA: base?.rA ?? 0,
+      initialRB: base?.rB ?? 0,
+      initialRCross: base?.rCross ?? 0,
+      initialDamageP1: totals.damageP1,
+      initialDamageP2: totals.damageP2,
+      initialHealP1: totals.healP1,
+      initialHealP2: totals.healP2,
+      initialStepCounter: (base?.id ?? currentStepIndex) + 1
+    });
+
+    lastSimulation = remainingSim;
+
+    const interventionStep: AlgorithmStep = {
+      id: base?.id ?? currentStepIndex,
+      type: winType === 'alpha' ? 'alpha_pause' : 'beta_pause',
+      title,
+      description: 'Pesos recalculados para as próximas fusões.',
+      complexityNotation: winType === 'alpha' ? 'Intervenção T(2)' : 'Intervenção T(4)',
+      rA: base?.rA ?? 0,
+      rB: base?.rB ?? 0,
+      rCross: base?.rCross ?? 0,
+      rTotal: base?.rTotal ?? 0,
+      totals: { ...totals },
+      boardState: cloneCards(board),
+      eventPayload: {
+        logText: logEntries.join(' ')
+      }
+    };
+
+    steps = [...steps.slice(0, currentStepIndex), interventionStep, ...remainingSim.steps];
+    logs = [...logs, ...logEntries];
+  }
+
   function handleCastSpell(spellId: string, targetSlot: number) {
     const isP1 = userPlayerId === 'player1';
     const activePlayer = isP1 ? player1 : player2;
@@ -340,34 +386,14 @@
     if (!spell) return;
 
     soundscape.playSpellCast();
-    if (isP1) {
-      player1.spells = player1.spells.filter(s => s.id !== spellId);
-      if (currentInterventionWindow === 'alpha') {
-        player1.hasPlayedAlphaSpell = true;
-      } else {
-        player1.hasPlayedBetaSpell = true;
-      }
+    activePlayer.spells = activePlayer.spells.filter(s => s.id !== spellId);
+    if (currentInterventionWindow === 'alpha') {
+      activePlayer.hasPlayedAlphaSpell = true;
     } else {
-      player2.spells = player2.spells.filter(s => s.id !== spellId);
-      if (currentInterventionWindow === 'alpha') {
-        player2.hasPlayedAlphaSpell = true;
-      } else {
-        player2.hasPlayedBetaSpell = true;
-      }
+      activePlayer.hasPlayedBetaSpell = true;
     }
 
-    const currentBoard = cloneCards(currentStep?.boardState || slots);
-    if (spell.spellTarget === 'weight_buff' && currentBoard[targetSlot]) {
-      currentBoard[targetSlot]!.weight += spell.passiveValue;
-    } else if (spell.spellTarget === 'weight_nerf' && currentBoard[targetSlot]) {
-      currentBoard[targetSlot]!.weight = Math.max(1, currentBoard[targetSlot]!.weight + spell.passiveValue);
-    } else if (spell.spellTarget === 'adjacent_swap') {
-      const neighbor = targetSlot < 7 ? targetSlot + 1 : targetSlot - 1;
-      const tmp = currentBoard[targetSlot];
-      currentBoard[targetSlot] = currentBoard[neighbor];
-      currentBoard[neighbor] = tmp;
-    }
-
+    let currentBoard = applySpell(currentStep?.boardState || slots, spell, targetSlot);
     const logEntries = [`[Fórmula Alquímica] Você conjurou ${spell.name} na Ilha #${targetSlot}!`];
 
     if (gameMode === 'solo' && player2.spells.length > 0) {
@@ -381,54 +407,13 @@
         const spellToCast = player2.spells.find(s => s.id === botDecision.spellId);
         if (spellToCast) {
           player2.spells = player2.spells.filter(s => s.id !== spellToCast.id);
-          const bTarget = botDecision.targetSlot;
-          if (spellToCast.spellTarget === 'weight_buff' && currentBoard[bTarget]) {
-            currentBoard[bTarget]!.weight += spellToCast.passiveValue;
-          } else if (spellToCast.spellTarget === 'weight_nerf' && currentBoard[bTarget]) {
-            currentBoard[bTarget]!.weight = Math.max(1, currentBoard[bTarget]!.weight + spellToCast.passiveValue);
-          } else if (spellToCast.spellTarget === 'adjacent_swap') {
-            const neighbor = bTarget < 7 ? bTarget + 1 : bTarget - 1;
-            const tmp = currentBoard[bTarget];
-            currentBoard[bTarget] = currentBoard[neighbor];
-            currentBoard[neighbor] = tmp;
-          }
-          logEntries.push(`[Fórmula Rival] Autômato conjurou ${spellToCast.name} na Ilha #${bTarget}!`);
+          currentBoard = applySpell(currentBoard, spellToCast, botDecision.targetSlot);
+          logEntries.push(`[Fórmula Rival] Autômato conjurou ${spellToCast.name} na Ilha #${botDecision.targetSlot}!`);
         }
       }
     }
 
-    logs = [...logs, ...logEntries];
-
-    const winType = currentInterventionWindow || 'alpha';
-    const remainingSim = generateAlgorithmSteps(currentBoard, {
-      startFrom: winType,
-      initialRA: currentStep?.rA ?? 0,
-      initialRB: currentStep?.rB ?? 0,
-      initialRCross: currentStep?.rCross ?? 0,
-      initialDamageP1: lastSimulation?.totalDamageP1 ?? 0,
-      initialDamageP2: lastSimulation?.totalDamageP2 ?? 0,
-      initialStepCounter: (currentStep?.id ?? currentStepIndex) + 1
-    });
-
-    lastSimulation = remainingSim;
-
-    const interventionStep: AlgorithmStep = {
-      id: currentStep?.id ?? currentStepIndex,
-      type: winType === 'alpha' ? 'alpha_pause' : 'beta_pause',
-      title: `[Alquimia] ${spell.name} Conjurada!`,
-      description: `${spell.name} aplicado na Ilha #${targetSlot}. Pesos recalculados para as próximas fusões.`,
-      complexityNotation: winType === 'alpha' ? 'Intervenção T(2)' : 'Intervenção T(4)',
-      rA: currentStep?.rA ?? 0,
-      rB: currentStep?.rB ?? 0,
-      rCross: currentStep?.rCross ?? 0,
-      rTotal: (currentStep?.rA ?? 0) + (currentStep?.rB ?? 0) + (currentStep?.rCross ?? 0),
-      boardState: cloneCards(currentBoard),
-      eventPayload: {
-        logText: logEntries.join(' ')
-      }
-    };
-
-    steps = [...steps.slice(0, currentStepIndex), interventionStep, ...remainingSim.steps];
+    resumeAfterIntervention(currentBoard, `[Alquimia] ${spell.name} Conjurada!`, logEntries);
 
     currentInterventionWindow = null;
     phase = 'executing';

@@ -1,5 +1,6 @@
 import type { Card, Archetype } from '../types';
 import { generateAlgorithmSteps, cloneCards } from './inversions';
+import { applySpell } from './spells';
 
 export interface BotDecision {
   cardId: string;
@@ -142,19 +143,7 @@ export function calculateSpellDecision(
       const target = board[slot];
       if (!target) continue;
 
-      const candidateBoard = cloneCards(board);
-      const simulatedTarget = candidateBoard[slot]!;
-
-      if (spell.spellTarget === 'weight_buff') {
-        simulatedTarget.weight += spell.passiveValue;
-      } else if (spell.spellTarget === 'weight_nerf') {
-        simulatedTarget.weight = Math.max(1, simulatedTarget.weight + spell.passiveValue);
-      } else if (spell.spellTarget === 'adjacent_swap') {
-        const neighbor = slot < 7 ? slot + 1 : slot - 1;
-        const temp = candidateBoard[slot];
-        candidateBoard[slot] = candidateBoard[neighbor];
-        candidateBoard[neighbor] = temp;
-      }
+      const candidateBoard = applySpell(board, spell, slot);
 
       const score = evaluateBoardStateForBot(candidateBoard, botArchetype);
       const gain = score - baselineScore;
